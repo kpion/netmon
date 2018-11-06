@@ -1,0 +1,36 @@
+{
+    "name": "Netmon",
+    "version": "1.0",
+    "description": "Per page Network monitoring tool",
+    
+    "permissions": [
+        "storage",
+        "activeTab",
+        "webNavigation",
+        "webRequest",
+        "http://*/",
+        "https://*/"        
+    ],
+    
+    "background": {
+      "scripts": ["common/app.js","background/background.js"]
+    },
+    
+    "browser_action": {
+        "default_popup": "modules/list/index.html?mode=popup",
+        "default_icon": {
+            "16": "static/images/get_started16.png",
+            "32": "static/images/get_started32.png",
+            "48": "static/images/get_started48.png",
+            "128": "static/images/get_started128.png"
+          }        
+    },   
+   
+    "icons": {
+        "16": "static/images/get_started16.png",
+        "32": "static/images/get_started32.png",
+        "48": "static/images/get_started48.png",
+        "128": "static/images/get_started128.png"
+    },       
+    "manifest_version": 2
+  }

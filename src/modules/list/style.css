@@ -1,0 +1,83 @@
+
+body{
+    /* max for both fx and chrome */
+    width:800px;
+}
+
+
+/* most if these things is to have fixed columns position */
+.entries-table{
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.entries-table tbody{
+    display:block;
+    width: 100%;
+    overflow: auto;
+    height: 200px;
+}
+
+.entries-table thead tr {
+    display: block;
+}
+
+.entries-table thead {
+    background: black;
+    color:#fff;
+}
+
+.entries-table th, .entries-table td {
+    padding: 4px;
+    text-align: left;
+    display: inline-block;
+    width: 210px;
+    border-left: 1px solid #cbcbcb;
+}	
+
+.entries-table td span{
+    display: block;
+    white-space: nowrap;
+    overflow:hidden;
+}
+
+/** specific columns **/
+
+.entries-table th.slim, .entries-table td.slim{
+    width:50px;
+}
+.entries-table th.type, .entries-table td.type{
+    width:80px;
+}
+.entries-table th.path-name-smart, .entries-table td.path-name-smart{
+    width:250px;
+}
+.entries-table th.show-details, .entries-table td.show-details{
+    width:25px;
+    cursor: pointer;
+}
+
+/* other things related to entries table, like hover, selected maybe etc */
+
+
+.entries-table tr:nth-child(even) {
+    background-color:#f3f3f3;
+}
+
+.entries-table tbody tr:hover {
+    background-color:#f1f6fd;
+}
+
+.entries-table tbody tr:nth-child(even):hover {
+
+    background-color:#f1f6fd;
+    /* background-image: linear-gradient(0deg, rgba(0,0,255,0.1) 0%, rgba(0,0,255,0.1) 100%); */
+}
+
+.entries-table {
+    cursor: default ; 
+}
+
+
+

@@ -1,0 +1,4 @@
+/.local/
+/project.code-workspace
+/.vscode
+/src/web-ext-artifacts
