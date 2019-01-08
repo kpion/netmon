@@ -78,9 +78,10 @@ class List{
         if(this.mode === 'popup'){
             criteria.tabId = this.currentTab.id;
         }
+
+        //getting requests made up until now.
         this.port.postMessage({
             command:'queryEntries',
-            //criteria: {tabId : this.currentTab.id},
             criteria: criteria,
             callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
         });
@@ -88,7 +89,7 @@ class List{
         //subscribing for the next events (requests), which will probably come:
         this.port.postMessage({
             command:'subscribe',
-            tabId : this.currentTab.id,
+            criteria: criteria,
         }); 
         
         //interface
@@ -102,13 +103,24 @@ class List{
                 });
             })        
         }
+        l('#clear').on('click',()=>{
+            this.port.postMessage({
+                command:'clearEntries',
+                criteria: criteria,
+                callbackData: {'action' : 'clearEntries'},//we'll get this one when called back.
+            });            
+            //to be continued.
+        });
     }
 
     //message (callback) from our port (probably from background js in response to our 'command')
     onMessage(message){
+        //console.log('onMessage:',message);
+
         //callback in response to *our* initialQuery query
         if(message.callbackData && message.callbackData.action == 'initialQuery' ){
             console.log('initialQuery:', message.result);
+            //we need to convert an array to a map
             message.result.forEach(([k,v])=>{
                 this.entries.set(k,v);
             });
@@ -123,8 +135,12 @@ class List{
     }
 
     //requests going *live* while we're opened
+    //we'll add a request to this->entries *and* will notify this.table to add a row.
+    //btw, this.table has a *reference* to this->entries, but here, when doing 'addRow' it doesn't
+    //make any use of this fact.
     onWebRequest(eventName, details){
         //this.logBkg ({eventName:eventName, details});
+        //console.log('onWebRequest:',eventName,eventName, details);
         if(eventName === 'onBeforeRequest'){
             const entry = new Entry();
             entry.request = JSON.parse(JSON.stringify(details));
@@ -152,6 +168,4 @@ class List{
 l(function (){
     const list = new List();
     list.initAndRun();
-
-
 })

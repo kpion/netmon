@@ -1,9 +1,28 @@
 
+*, *::before, *::after { box-sizing: border-box; }
+
 body{
-    /* max for both fx and chrome */
-    width:800px;
+    font-family: sans-serif; 
+    font-size: 13px;/* default in chrome, so we're normalizing here */
+    margin:0px;
+    color: #333;
 }
 
+/* this means we are in a popup */
+@media (max-width: 800px) {
+    body{
+        /* max for both fx and chrome */
+        width:800px;
+    }
+}
+
+/* this means we are probably in full mode */
+@media (min-width: 801px) {
+    body{
+        /* max for both fx and chrome */
+        width:100%;
+    }
+}
 
 /* most if these things is to have fixed columns position */
 .entries-table{
@@ -32,8 +51,9 @@ body{
     padding: 4px;
     text-align: left;
     display: inline-block;
-    width: 210px;
+    width: 200px;  
     border-left: 1px solid #cbcbcb;
+    
 }	
 
 .entries-table td span{
@@ -45,7 +65,7 @@ body{
 /** specific columns **/
 
 .entries-table th.slim, .entries-table td.slim{
-    width:50px;
+    width:55px;
 }
 .entries-table th.type, .entries-table td.type{
     width:80px;

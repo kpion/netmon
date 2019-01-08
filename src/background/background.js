@@ -19,8 +19,8 @@ class Monitor{
 		//Map of Maps - references to .entries objects above by tabId and then by requestId.
 		this.tabEntries = new Map();
 
-		//Object. These are objects with *Ports* by tabId, see onMessage. One tab can have only one subscriber
-		this.tabSubscibers = {};
+		//Array of objects with *Ports* and criteria (like tabId), see onMessage.
+		this.subscribers = [];
 	}
 
 	//alias for .init
@@ -92,19 +92,28 @@ class Monitor{
 		//communication 
 		//this is established e.g. every time a user opens a browser action popup.
 		//later the client probably will call 'subscribe'
+
 		chrome.runtime.onConnect.addListener(port => {
-			
+
+			//called everytime a popup is opened (or full mode list)
 			port.onMessage.addListener(message => {
 				this.onMessage(port, message);
 			})
 
+			//called everytime a popup is closed (or full mode list)
 			port.onDisconnect.addListener(something => {
 				//removing subscriber (added by this.onMessage):
-				for(var n in this.tabSubscibers){
-					if(this.tabSubscibers[n].port === port){
-						logger.log('subscriber removed, tabId: ' + n);
-						delete this.tabSubscibers[n];
-						break;
+				for(var n in this.subscribers){
+					const subscriber = this.subscribers[n];
+					if(subscriber.port === port){
+						delete this.subscribers[n];
+						//logging only:
+						let dbgTabId = 'none';
+						if(subscriber.criteria && subscriber.criteria.tabId){
+							dbgTabId = subscriber.criteria.tabId;
+						}
+						logger.log('subscriber removed, tabId: ' + dbgTabId);
+						//break;
 					}
 				}
 			})
@@ -135,9 +144,9 @@ class Monitor{
 	onWebNavigationStart(details){
 		//logger.log('onWebNavigationStart: ', details);
 
-		//this one does not remove entries from this.entries, only a map of tabEntries to entries.
-		//thanks to that, the very next initialQuery (or any other query) to this particular tab will give only the requests
-		//following after this reset.
+		//removing "old" tabEntries, i.e. older than "now".
+		//thanks to that, the very next initialQuery (or any other query) to this particular tab 
+		//will give only the requests following this reset.
 		if(details.frameId === 0){//main frame, not some sub iframes
 			if(this.tabEntries.has(details.tabId)){
 				//this *could* work: this.tabEntries.delete(details.tabId);
@@ -166,7 +175,31 @@ class Monitor{
 	//On **all** the requests.
 	onWebRequest(eventName, details){
 		//logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
-		const subscriber = this.tabSubscibers[details.tabId];
+		for(var n in this.subscribers){
+			const subscriber = this.subscribers[n];
+			const port = subscriber.port;
+			let criteriaMatches = true;
+			if(subscriber.criteria && typeof subscriber.criteria.tabId !== 'undefined' && subscriber.criteria.tabId !== details.tabId){
+				criteriaMatches = false;
+			}
+			
+			if(criteriaMatches){
+				try{
+					port.postMessage({
+						command: 'subscription', 
+						eventName: eventName,
+						details: details,
+					});
+				}catch(error){
+					//logger.log('error with port.postMessage: ',error, ' subscribed removed');
+					//most probably 'disconnected port' or similar, removing.
+					delete this.subscribers[n];
+				}					
+			}
+		}//end of looping subscribers
+		//old:
+		/*
+		const subscriber = this.tabsubscribers[details.tabId];
 		if(typeof subscriber !== 'undefined'){
 			const port = subscriber.port;
 			try{
@@ -178,11 +211,14 @@ class Monitor{
 			}catch(error){
 				//logger.log('error with port.postMessage: ',error, ' subscribed removed');
 				//most probably 'disconnected port' or similar, removing.
-				delete this.tabSubscibers[details.tabId];
+				delete this.tabsubscribers[details.tabId];
 			}			
-		}
+		}*/
 	}
 
+	/**
+	 * Here we actually do add an 'entry' to the list. 
+	 */
 	onBeforeRequest(details){
 		//logger.log('onBeforeRequest for ' + details.url,details);
 		//tests:
@@ -282,19 +318,27 @@ class Monitor{
 	 * There is also this.subscribers which receive regular messages related to requests
 	 */
 	onMessage(port, message){
+		
 		if (message.command === "subscribe"){
+			/*
 			logger.log('new subscriber, tabId: ' + message.tabId);
-			this.tabSubscibers[message.tabId] = {
+			this.tabsubscribers[message.tabId] = {
 				port: port,
-			};
+			};*/
+			logger.log('new subscriber, criteria: ' , message.criteria);
+			this.subscribers.push({
+				port : port,
+				criteria: message.criteria, 
+			});
 		}
 		if (message.command === "unsubscribe"){
-			if(this.tabSubscibers[message.tabId]){
-				delete this.tabSubscibers[message.tabId];
-			}
+			/*
+			if(this.tabsubscribers[message.tabId]){
+				delete this.tabsubscribers[message.tabId];
+			}*/
 		}
-
-		if (message.command == "queryEntries"){
+		
+		if (message.command === "queryEntries"){
 			let entries = this.query(message.criteria || {});
 			port.postMessage({
 				command: 'callback', 
@@ -304,14 +348,17 @@ class Monitor{
 				result: Array.from(entries), 
 				errorCode: 0
 			});
-		}				
+		}
+		if (message.command === 'clearEntries'){
+			//to be continued			
+		}						
 	}
 }
 
 const monitor = new Monitor();
 monitor.run();
 
-//not related to the Monitor stuff. 
+
 chrome.runtime.onMessage.addListener(
   function(message, sender, sendResponse) {
 	//console.log on behalf of something else, like browser action popup (to make it easier on chrome)
@@ -319,8 +366,10 @@ chrome.runtime.onMessage.addListener(
 		logger.log('from ' + message.from + ':');
 		logger.log(message.param);
 	}
+	
     if (message.command == "queryEntries"){
 		let entries = monitor.query(message.criteria || {});
+		logger.log('queryEntries');
       	sendResponse({errorCode: 0, result: entries});
     }
 });

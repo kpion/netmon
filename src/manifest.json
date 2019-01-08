@@ -1,7 +1,7 @@
 {
     "name": "Netmon",
     "version": "1.0",
-    "description": "Per page Network monitoring tool",
+    "description": "Network monitoring tool",
     
     "permissions": [
         "storage",
