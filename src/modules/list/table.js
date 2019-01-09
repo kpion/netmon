@@ -10,7 +10,7 @@ class Table{
       this.tableTheadEl = document.querySelector('thead',tableElement);
       this.tableTbodyEl = document.querySelector('tbody',tableElement);
       this.setColumns(columns);
-      this.setEntries(data);
+      //this.setEntries(data);
       
       this.autoScrollEnabled = true;
       this.autoScrollJustDone = false;
@@ -36,33 +36,38 @@ class Table{
      * 
      * @param {Map} entries 
      */
+    /*
     setEntries(entries){
       this.entries = entries;
     }
+    */
 
     //remove head and or body
     remove(removeHead = true, removeBody = true){
         if(removeHead){
-            this.removeChildren(this.tableTheadEl);
+            utils.removeChildren(this.tableTheadEl);
         }
         if(removeBody){
-            this.removeChildren(this.tableTbodyEl);
+            utils.removeChildren(this.tableTbodyEl);
         }        
     }
 
-    make (){
+    make (entries = null){
         if(!this.tableEl){
             console.error('tableEl is empty');return;
         }
         const head = this.makeHead();
-        const body = this.makeBody();
+        //const body = this.makeBody();
         //console.log('head:');console.dir(head.cloneNode(true));//cloneNode because we'll soon move them
         //console.log('body:');console.dir(body.cloneNode(true));//cloneNode because we'll soon move them
         this.tableTheadEl.appendChild(head);
-        this.tableTbodyEl.appendChild(body);
+        //this.tableTbodyEl.appendChild(body);
 
-        if(this.autoScrollEnabled){
-            this.scrollToBottom();
+        // if(this.autoScrollEnabled){
+        //     this.scrollToBottom();
+        // }
+        if(entries){
+            this.addRows(entries);
         }
     }
     
@@ -87,17 +92,7 @@ class Table{
       fragment.appendChild(tr);
       return fragment;
     }
-    
-    makeBody(){
-      var fragment = document.createDocumentFragment();
-      this.entries.forEach(entry => {
-        const tr = this.makeRow(entry);
-        fragment.appendChild(tr);
-      });
-      return fragment;
-      
-    }
-    
+
     makeRow(entry){
         const tr = document.createElement('tr');
         tr.setAttribute('data-requestId',entry.request.requestId);
@@ -166,7 +161,16 @@ class Table{
           }   
         return tr;
     }
-
+    
+    makeRows(entries){
+        var fragment = document.createDocumentFragment();
+        entries.forEach(entry => {
+            const tr = this.makeRow(entry);
+            fragment.appendChild(tr);
+        });
+        return fragment;
+    }
+    
     /*
     use when the table is already built - this one will add a row to existing table.
     */
@@ -178,17 +182,19 @@ class Table{
         }
     }
 
+    addRows(entries){
+        const rows = this.makeRows(entries);
+        this.tableTbodyEl.appendChild(rows);
+        if(this.autoScrollEnabled){
+            this.scrollToBottom();
+        }        
+    }
+    
     scrollToBottom(){
         this.autoScrollJustDone = true;
         this.tableTbodyEl.scrollTop = this.tableTbodyEl.scrollHeight - this.tableTbodyEl.clientHeight;
         
     }
 
-    //utility, removes all children of given node, without using .innerHTML
-    removeChildren (node) {
-      var last;
-      while (last = node.lastChild) node.removeChild(last);
-    };
-  
   }
   

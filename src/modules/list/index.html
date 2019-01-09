@@ -3,8 +3,10 @@
   <head>
       <meta charset="UTF-8">
 
-      <script src="../../common/app.js"></script>
+      <script src="../../common/utils.js"></script>
       <script src="../../lib/lightdom.js"></script>
+      <script src="../../common/app.js"></script>
+      
 
       <script src="main.js"></script>
       <script src="details.js"></script>
@@ -16,11 +18,19 @@
   
   <body >
     <div id = 'header'></div>
-    
+
+    <div id = 'toolbar'>
+      <span id = 'filter'>
+        <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
+      </span> 
+    </div>
+
     <table id = 'entriesTable' class="entries-table" >
       <thead></thead>
       <tbody></tbody>
     </table> 
+    <div id = 'status'></div>
+
     <div>
       <button  id = 'popOut' class = 'pure-button'>Pop-out</button>
       <button  id = 'showFull' class = 'pure-button'>Full mode</button>
@@ -33,7 +43,7 @@
       <div class = 'content entry-details'>
           <h2>loading....</h2>
       </div>
-
+      
       <br>
       <button class = 'modal-btn-ok'>OK</button>
     </div>

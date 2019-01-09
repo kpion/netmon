@@ -21,9 +21,12 @@ class List{
         //Map of all Entry objects by requestId, for this tab. 
         //**Referenced** in e.g. table.js
         this.entries = new Map();
-
+        
         this.table = null;
         this.details = null;
+
+        //element (lightdom)
+        this.lstatus = null;
     }
 
     initAndRun(){
@@ -65,6 +68,8 @@ class List{
     }
 
     run(){
+        this.lstatus = l('#status');
+
         //html table 
 
         //#entriesTable - <table> declared in index.html
@@ -82,7 +87,7 @@ class List{
             ['𝄙','special','showDetails', 'show-details']
         ]);
         //setting reference to our entries map
-        this.table.setEntries(this.entries);
+        //this.table.setEntries(this.entries);
 
         //communication        
 
@@ -112,6 +117,8 @@ class List{
         }); 
         
         //interface
+
+        //buttons for clearing, closing, opening new netmon tools.
         if(this.queryTab === 'all'){
             l('#showFull').css('display','none');    
             l('#clearTab').css('display','none');        
@@ -162,6 +169,10 @@ class List{
             }
         })
 
+        //filtering
+        l('#filter #filter-text').on('input',(ev) => {
+            this.updateTable();
+        });
     }
 
     /**
@@ -185,11 +196,12 @@ class List{
     }
 
     /**
-     * clearing data (but not filters)
+     * Clears data, both 'original' (here) and in the table object. 
+     * Does not clear filters.
      */ 
     clearData(){
-        this.table.remove(true,true);
         this.entries.clear();
+        this.table.remove(true,true);
     }
 
     //message (callback) from our port (probably from background js in response to our 'command')
@@ -202,7 +214,11 @@ class List{
             message.result.forEach(([k,v])=>{
                 this.entries.set(k,v);
             });
+            //initial build, this will make the header (columns)
+            //then .updateTable will also add the rows. p.s. this.entries will *not* be stored 'for later' by `table`.
             this.table.make();
+            this.updateTable();
+            this.updateStatus();
         }
 
         //our 'subscription' callback from background js' monitor
@@ -231,12 +247,88 @@ class List{
             //tests:
             //this.table.remove(); this.table.make();//works ok, whole table recreated.
             this.table.addRow(this.entries.get(details.requestId));
+            this.updateStatus();
         }else if (eventName === 'entriesClearedNotification'){
             //something somewhere did a log clearing, we don't care here if it's us or not, we'll just reread.
             this.clearData();
             this.readAwaiting();
         }                
     }
+
+    /**
+     * (Re)Updates *whole* table, based on our .entries AND filters.
+     * Used on initial startup and when filters change.
+     */
+    updateTable(){
+        //removing table body rows:
+        this.table.remove(false,true);
+        //readding (or adding for the first time, doesn't matter)
+        let filtered = this.getFiltered(this.entries);
+        this.table.addRows(filtered);
+    }
+
+    updateStatus(){
+        let statusString = '';
+        const entriesTotal = this.entries.size;
+        const entriesVisible = this.entries.size;//@todo - change that when filtering implemented
+        if(entriesTotal === entriesVisible){
+            statusString = `${entriesTotal} requests`;
+        }else{
+            statusString = `${entriesVisible}/${entriesTotal} requests`;
+        }
+        this.lstatus.text(statusString);
+    }
+
+    /**
+     * Filters given Map by using the filters in the interface
+     * Returns exactly the same 'entries' map in case there are no filters active
+     * Otherwise returns a modified copy. 
+     */
+    getFiltered(entries){
+        //one or more of the filters is active?
+        //we first test if there are any filters at all, to quit as quick as possible if there are none.
+        let filtersActive = false;
+
+
+        let filterText = document.querySelector('#filter #filter-text').value;
+        filterText = filterText.trim();
+
+        if(filterText != ''){
+            filtersActive = true;
+        }
+
+        //more tests.
+        if (!filtersActive){
+            return entries;
+        }
+        //ok, there is at least one filter active
+        const resultEntries = new Map();
+        let filterTextRegex = null;
+        if( filterText != ''){
+            //is it wrapped in // ? Like '/blah.*/' - then user wants to treat it as a regex. 
+            if(utils.hasRegexDelimeters(filterText)){
+                //we'll use only what's inside the / and / - just like it is.
+                filterTextRegex = new RegExp(filterText.substring(1, filterText.length-1), "i");    
+            }else{//otherwise we'll escape things like ? or * to do literal matching.
+                filterTextRegex = new RegExp(utils.escapeRegExp(filterText), "i");
+            }
+        }
+        var t0 = performance.now();
+        this.entries.forEach((entry, requestId) => {
+            let add = true;
+            if(filterTextRegex && !filterTextRegex.test(entry.request.url)){
+                add = false;
+            }
+            if(add){
+                resultEntries.set(requestId, entry);
+            }
+        });
+        var t1 = performance.now();
+        //console.log("Call to do regex filtering took " + (t1 - t0) + " milliseconds.");
+
+        return resultEntries;
+    }
+
     //logging on behalf on background.js - easier to observe it than with 'inspect popup' on chrome
     //yeah, pretty akward.
     logBkg(param){

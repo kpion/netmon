@@ -3,9 +3,10 @@
 
 body{
     font-family: sans-serif; 
-    font-size: 13px;/* default in chrome, so we're normalizing here */
+    font-size: 13px;/* default in chrome extensions and also dev tools , so we're normalizing here */
     margin:0px;
     color: #333;
+    background-color: #eee;
 }
 
 :root{
@@ -33,6 +34,7 @@ body{
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
+    background-color: #fff;
 }
 
 .entries-table tbody{
@@ -104,6 +106,18 @@ body{
 }
 
 
+/*
+-------------------------------------------------------------------------------
+status bar
+-------------------------------------------------------------------------------
+*/
+
+#status{
+    padding:3px;
+    border:1px solid #ccc;
+    border-right:none;
+    border-left:none;
+}
 
 
 
@@ -119,13 +133,14 @@ modal dialog
     /* height: 200px; */
     left: calc(50% - var(--dlg-width)/2);
     padding: 10px;
-  
+    /* font-size:1.1em; */
     border: 1px solid #555;
     border-radius: 5px; 
-     background-color:white; 
+    background-color:white; 
     
-    color:#333;
+    color:#444;
     display:none;
+    
 }
   
 .modal.modal-visible{
@@ -174,11 +189,10 @@ modal dialog
     font-weight: normal;
     box-sizing: border-box;
 }
-.modal {
-    font-size:0.9em;
-}
+
 .modal h1{
     font-size:1.2em;
+    color :#111;
 }
 
 .modal h2{
@@ -187,13 +201,17 @@ modal dialog
     margin:12px 0px;
     border-bottom:1px solid #eee;
     max-width:97%;
+    color :#111;
 }
 
 /* the entire detail's container (which might be then a child of a dialog */
 .entry-details{
     margin-top:1.5em;
     max-height:200px;
+    padding-right:5px;
     overflow:auto;
+    word-wrap:break-word;
+    
 }
 .entry-details .row {
     margin-bottom:0.3em;
@@ -202,4 +220,8 @@ modal dialog
     font-weight: bold;
     display:inline-block;
     margin-right:0.5em;
+}
+
+.entry-details .row .value {
+    
 }

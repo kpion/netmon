@@ -65,9 +65,9 @@ class EntryDetails{
     }
 
     setEntry(entry){
-        console.log(entry);
-        var last;
-        while (last = this.container.lastChild) this.container.removeChild(last);
+        //console.log(entry);
+
+        utils.removeChildren(this.container);
 
         entry = JSON.parse(JSON.stringify(entry));
         
@@ -99,5 +99,11 @@ class EntryDetails{
         this.makeRow(this.container,'From cache', entry.response.fromCache);
         //this.makeRow(this.container,'Timestamp', this.formatTime(entry.response.timeStamp));
         
+        if(typeof app !== 'undefined' && app.isDev()){
+            this.makeTitle(this.container, 'Debugging info (dev mode only)');
+            const preEl = document.createElement('pre');
+            this.makeRow(preEl,'Whole entry jsoned', JSON.stringify(entry, null, 4));
+            this.container.appendChild(preEl);
+        }
     }
 }
