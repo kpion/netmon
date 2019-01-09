@@ -16,7 +16,7 @@ class Monitor{
 		//Map. all Entry objects by requestId, absolutely all entries, no dividing into tabs, with main key being
 		this.entries = new Map();
 
-		//Map of Maps - references to .entries objects above by tabId and then by requestId.
+		//Map of Maps - by tabId we have then a map of entries by requestID (independent from the this.entries) 
 		this.tabEntries = new Map();
 
 		//Array of objects with *Ports* and criteria (like tabId), see onMessage.
@@ -174,12 +174,12 @@ class Monitor{
 	*/
 	//On **all** the requests.
 	onWebRequest(eventName, details){
-		//logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
+		// logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
 		for(var n in this.subscribers){
 			const subscriber = this.subscribers[n];
 			const port = subscriber.port;
 			let criteriaMatches = true;
-			if(subscriber.criteria && typeof subscriber.criteria.tabId !== 'undefined' && subscriber.criteria.tabId !== details.tabId){
+			if(subscriber.criteria && typeof subscriber.criteria.tabId !== 'undefined' && subscriber.criteria.tabId != details.tabId){
 				criteriaMatches = false;
 			}
 			
@@ -233,8 +233,9 @@ class Monitor{
 		entry.request = details;
 		this.entries.set(details.requestId,entry);
 		
+		//and... *independly*, tabEntries.
 		if(!this.tabEntries.has(details.tabId)){
-			this.tabEntries.set(details.tabId,new Map());
+			this.tabEntries.set(details.tabId, new Map());
 		}
 		this.tabEntries.
 			get(details.tabId).
@@ -296,14 +297,18 @@ class Monitor{
 		if(criteria == null || Object.keys(criteria).length === 0){
 			return this.entries;
 		}
+		
 		//first phase src entries:
 		let srcEntries = null;//one object or map
 		if(typeof criteria.tabId !== 'undefined'){
-			srcEntries = this.tabEntries.get(criteria.tabId);
+			//is tabId valid integer?
+			console.assert(parseInt(criteria.tabId) == criteria.tabId);
+			srcEntries = this.tabEntries.get(parseInt(criteria.tabId));
 		};
 		//even if both are defined, that is fine
 		if(typeof criteria.requestId !== 'undefined'){
 			srcEntries = this.entries.get(criteria.requestId);
+			logger.log('reading by requestId: ' + criteria.requestId);
 		};
 		if(typeof srcEntries === 'undefined'){
 			return {};
@@ -349,16 +354,55 @@ class Monitor{
 				errorCode: 0
 			});
 		}
+
+		//'clear' button (or clear all)
 		if (message.command === 'clearEntries'){
-			//to be continued			
-		}						
+
+			//Is this clearing a specific tab only?
+			if(message.criteria && message.criteria.tabId)	{
+				let tabId = parseInt(message.criteria.tabId);
+				logger.log('clearing tab id: ' + tabId);
+				console.assert(tabId == message.criteria.tabId);
+				
+				//first we'll get the entries from the given tab, grab their requestId and remove 
+				//items this.entries by requestId
+				const theTabEntries = this.tabEntries.get(tabId);
+				if(theTabEntries){
+					theTabEntries.forEach((entry,key) => {
+						this.entries.delete(key);
+					})
+					this.tabEntries.delete(tabId);
+				}
+			}
+			else{
+				//removing absolutely everything
+				logger.log('clearing absolutely everything');
+				this.tabEntries.clear();
+				this.entries.clear();
+			}
+			//notifing subscribers.
+			for(var n in this.subscribers){
+				const subscriber = this.subscribers[n];
+				try{
+					subscriber.port.postMessage({
+						command: 'subscription', 
+						eventName: 'entriesClearedNotification',
+						details: {},
+					});
+				}catch(error){
+				}					
+			}
+		}
 	}
 }
 
 const monitor = new Monitor();
 monitor.run();
 
-
+/**
+ * this one is different than the Monitor::onMessage. The latter is based on a port and this one here
+ * is just a one time message, mostly for debug purposes.
+ */
 chrome.runtime.onMessage.addListener(
   function(message, sender, sendResponse) {
 	//console.log on behalf of something else, like browser action popup (to make it easier on chrome)
@@ -366,11 +410,6 @@ chrome.runtime.onMessage.addListener(
 		logger.log('from ' + message.from + ':');
 		logger.log(message.param);
 	}
-	
-    if (message.command == "queryEntries"){
-		let entries = monitor.query(message.criteria || {});
-		logger.log('queryEntries');
-      	sendResponse({errorCode: 0, result: entries});
-    }
+
 });
 

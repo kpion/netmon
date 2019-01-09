@@ -12,7 +12,9 @@ logger.log('list.js');
  */
 class List{
     constructor(){
-        this.currentTab = null;
+        //queryTab: 'all': all tabs (usually in full mode). OR <integer>: specific id
+        this.queryTab = null;
+
         this.port = null;
         this.mode = null;
 
@@ -20,6 +22,8 @@ class List{
         //**Referenced** in e.g. table.js
         this.entries = new Map();
 
+        this.table = null;
+        this.details = null;
     }
 
     initAndRun(){
@@ -35,13 +39,27 @@ class List{
             this.mode = 'popup';//default one.
         }
 
-        //we want to know 'our' tab id regardless mode (popup or full)
+        //which tab should we filter here?
+
+        //possible tabId in url (or 'all' or nothing)
+        let urlTab = url.searchParams.get("tab");
+        //we want to know 'our' tab id regardless mode (popup or full) or tab defined in url
+        //so we put test scenarios here:
         chrome.tabs.query({currentWindow: true, active: true},tab => {
             if(!tab[0]){
                 console.error('tab[0] is undefined o.O')
                 return;//impossible
             }
-            this.currentTab = tab[0];
+            const curTab = tab[0];
+            if(urlTab != null){
+                this.queryTab = urlTab;
+            }else{
+                if(this.mode === 'popup'){
+                    this.queryTab = curTab.id;
+                }else{
+                    this.queryTab = 'all';
+                }
+            }
             this.run();
         });
     }
@@ -75,16 +93,17 @@ class List{
         });
 
         let criteria = {};
-        if(this.mode === 'popup'){
-            criteria.tabId = this.currentTab.id;
+        if(this.queryTab !== 'all'){
+            criteria.tabId = this.queryTab;
         }
 
         //getting requests made up until now.
-        this.port.postMessage({
-            command:'queryEntries',
-            criteria: criteria,
-            callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
-        });
+        // this.port.postMessage({
+        //     command:'queryEntries',
+        //     criteria: criteria,
+        //     callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
+        // });
+        this.readAwaiting();
 
         //subscribing for the next events (requests), which will probably come:
         this.port.postMessage({
@@ -93,24 +112,84 @@ class List{
         }); 
         
         //interface
-        if(this.mode === 'full'){
+        if(this.queryTab === 'all'){
             l('#showFull').css('display','none');    
+            l('#clearTab').css('display','none');        
         }
-
-        if(this.mode !== 'full'){
-            l('#showFull').on('click',()=>{
-                chrome.tabs.create({url:chrome.extension.getURL("modules/list/index.html?mode=full")}, function(tab) {
-                });
-            })        
+        if(this.mode === 'full'){
+            l('#showFull').css('display','none');  
         }
-        l('#clear').on('click',()=>{
+        l('#showFull').on('click',()=>{
+            chrome.tabs.create({url:chrome.extension.getURL("modules/list/index.html?mode=full")}, function(tab) {
+            });
+        })        
+    
+        l('#popOut').on('click',()=>{
+            window.open(chrome.extension.getURL(`modules/list/index.html?mode=full&tab=${this.queryTab}`));
+        })          
+        
+        l('#clearTab, #clearAll').on('click',(ev)=>{
+            let clearCriteria = ev.currentTarget.matches('#clearTab') ? criteria : {};
+            console.log('clear crits:',clearCriteria);
             this.port.postMessage({
                 command:'clearEntries',
-                criteria: criteria,
-                callbackData: {'action' : 'clearEntries'},//we'll get this one when called back.
+                criteria: clearCriteria,
             });            
-            //to be continued.
         });
+
+        //////////////////
+        //details dialog or div
+
+        //close button:    
+        l('.modal .modal-btn-close, .modal .modal-btn-ok').on('click',(ev)=>{
+            l(ev.target).closest('.modal').removeClass('modal-visible');
+        })
+
+        this.details = new EntryDetails(l('#modal-entry-details .content')[0]);
+        const lTableBody =  l('#entriesTable tbody');
+        lTableBody.on('click',ev => {
+            const lTarget = l(ev.target);
+            //details popup
+            if(lTarget.is('#entriesTable tbody tr *')){
+                const reqestId = lTarget.closest('tr').attr('data-requestid');
+                const entry = this.entries.get(reqestId);
+                if(!entry){
+                    return;
+                }
+                l('#modal-entry-details').addClass('modal-visible');
+
+                this.details.setEntry(entry);                 
+            }
+        })
+
+    }
+
+    /**
+     * getting requests made up until now. Used on initial start or on some ocassions, like notification
+     * from background.js about e.g. clearing log.
+     */
+    readAwaiting(){
+        
+        let criteria = {};
+        if(this.queryTab !== 'all'){
+            criteria.tabId = this.queryTab;
+
+        }
+
+        //getting requests made up until now.
+        this.port.postMessage({
+            command:'queryEntries',
+            criteria: criteria,
+            callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
+        });
+    }
+
+    /**
+     * clearing data (but not filters)
+     */ 
+    clearData(){
+        this.table.remove(true,true);
+        this.entries.clear();
     }
 
     //message (callback) from our port (probably from background js in response to our 'command')
@@ -119,7 +198,6 @@ class List{
 
         //callback in response to *our* initialQuery query
         if(message.callbackData && message.callbackData.action == 'initialQuery' ){
-            console.log('initialQuery:', message.result);
             //we need to convert an array to a map
             message.result.forEach(([k,v])=>{
                 this.entries.set(k,v);
@@ -129,7 +207,7 @@ class List{
 
         //our 'subscription' callback from background js' monitor
         if(message.command === 'subscription'){
-            this.onWebRequest(message.eventName,message.details);
+            this.onSubscription(message.eventName,message.details);
         }
        
     }
@@ -138,9 +216,9 @@ class List{
     //we'll add a request to this->entries *and* will notify this.table to add a row.
     //btw, this.table has a *reference* to this->entries, but here, when doing 'addRow' it doesn't
     //make any use of this fact.
-    onWebRequest(eventName, details){
+    onSubscription(eventName, details){
         //this.logBkg ({eventName:eventName, details});
-        //console.log('onWebRequest:',eventName,eventName, details);
+        //console.log('onSubscription:',eventName,eventName, details);
         if(eventName === 'onBeforeRequest'){
             const entry = new Entry();
             entry.request = JSON.parse(JSON.stringify(details));
@@ -148,20 +226,21 @@ class List{
         }else if (eventName === 'onSendHeaders'){
             this.entries.get(details.requestId)['request']['headers'] = details.requestHeaders;	            
         }else if (eventName === 'onCompleted'){
-            details['headers'] = details.responseHeaders;
-            delete details['responseHeaders'];            
-
             this.entries.get(details.requestId)['response'] = details;
             //renaming 'responseHeaders' to simply 'headers' for consistency
             //tests:
             //this.table.remove(); this.table.make();//works ok, whole table recreated.
             this.table.addRow(this.entries.get(details.requestId));
+        }else if (eventName === 'entriesClearedNotification'){
+            //something somewhere did a log clearing, we don't care here if it's us or not, we'll just reread.
+            this.clearData();
+            this.readAwaiting();
         }                
     }
     //logging on behalf on background.js - easier to observe it than with 'inspect popup' on chrome
     //yeah, pretty akward.
     logBkg(param){
-        chrome.runtime.sendMessage({command:'logPlease',from: `popup tabId: ${this.currentTab.id}`,'param': param});
+        chrome.runtime.sendMessage({command:'logPlease',from: `popup tabId: ${this.queryTab}`,'param': param});
     }
 }
 

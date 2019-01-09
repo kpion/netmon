@@ -9,9 +9,11 @@
       <script src="main.js"></script>
       <script src="details.js"></script>
       <script src="table.js"></script>
+
       <link rel="stylesheet" type="text/css" href="../../static/pure/pure-min.css">
       <link rel="stylesheet" type="text/css" href="style.css">
   </head>
+  
   <body >
     <div id = 'header'></div>
     
@@ -20,8 +22,21 @@
       <tbody></tbody>
     </table> 
     <div>
+      <button  id = 'popOut' class = 'pure-button'>Pop-out</button>
       <button  id = 'showFull' class = 'pure-button'>Full mode</button>
-      <button  id = 'clear' class = 'pure-button'>Clear</button>
+      <button  id = 'clearTab' class = 'pure-button'>Clear</button>
+      <button  id = 'clearAll' class = 'pure-button'>Clear everything (all tabs)</button>
     </div>
+
+    <div class = 'modal' id = 'modal-entry-details'>
+      <label class = 'modal-btn-close'>✕</label>
+      <div class = 'content entry-details'>
+          <h2>loading....</h2>
+      </div>
+
+      <br>
+      <button class = 'modal-btn-ok'>OK</button>
+    </div>
+
   </body>
 </html>

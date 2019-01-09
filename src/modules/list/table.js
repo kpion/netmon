@@ -11,7 +11,18 @@ class Table{
       this.tableTbodyEl = document.querySelector('tbody',tableElement);
       this.setColumns(columns);
       this.setEntries(data);
-      this.setListeners();
+      
+      this.autoScrollEnabled = true;
+      this.autoScrollJustDone = false;
+      this.tableTbodyEl.addEventListener('scroll',(ev)=>{
+        //did *user* do the scroll? If so, then maybe we will enable / disable autoscroll.
+        if(!this.autoScrollJustDone){
+            //did he/she scroll to the bottom? If not, then we'll disable autoscroll
+            this.autoScrollEnabled = (this.tableTbodyEl.scrollTop === this.tableTbodyEl.scrollHeight - this.tableTbodyEl.clientHeight);
+        }
+        this.autoScrollJustDone = false;
+      })
+      
     }
 
     /*
@@ -49,6 +60,10 @@ class Table{
         //console.log('body:');console.dir(body.cloneNode(true));//cloneNode because we'll soon move them
         this.tableTheadEl.appendChild(head);
         this.tableTbodyEl.appendChild(body);
+
+        if(this.autoScrollEnabled){
+            this.scrollToBottom();
+        }
     }
     
     makeHead(){
@@ -158,20 +173,16 @@ class Table{
     addRow(entry){
         const tr = this.makeRow(entry);
         this.tableTbodyEl.appendChild(tr);
+        if(this.autoScrollEnabled){
+            this.scrollToBottom();
+        }
     }
 
-
-    setListeners(){
-        const lTableBody =  l(this.tableTbodyEl);
-        lTableBody.on('click',ev => {
-            const lTarget = l(ev.target);
-            //details popup
-            if(lTarget.is('.entriesTable .showDetails span')){
-                alert(lTarget.closest('tr').text());
-            }
-        })
-    };
-
+    scrollToBottom(){
+        this.autoScrollJustDone = true;
+        this.tableTbodyEl.scrollTop = this.tableTbodyEl.scrollHeight - this.tableTbodyEl.clientHeight;
+        
+    }
 
     //utility, removes all children of given node, without using .innerHTML
     removeChildren (node) {

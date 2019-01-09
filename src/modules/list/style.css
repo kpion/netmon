@@ -8,6 +8,10 @@ body{
     color: #333;
 }
 
+:root{
+    --dlg-width:500px;/* modal dialog */
+}
+
 /* this means we are in a popup */
 @media (max-width: 800px) {
     body{
@@ -35,7 +39,7 @@ body{
     display:block;
     width: 100%;
     overflow: auto;
-    height: 200px;
+    height: 300px;
 }
 
 .entries-table thead tr {
@@ -101,3 +105,101 @@ body{
 
 
 
+
+
+/*
+-------------------------------------------------------------------------------
+modal dialog
+-------------------------------------------------------------------------------
+*/
+.modal{
+    position:absolute;
+    top: 50px;
+    width: var(--dlg-width);
+    /* height: 200px; */
+    left: calc(50% - var(--dlg-width)/2);
+    padding: 10px;
+  
+    border: 1px solid #555;
+    border-radius: 5px; 
+     background-color:white; 
+    
+    color:#333;
+    display:none;
+}
+  
+.modal.modal-visible{
+    display:block;
+}
+
+.modal .content{
+    margin-bottom:5px;
+}
+
+.modal .modal-btn-close{
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    padding-top: 3px;
+    /* background: #fff; */
+    font-size: 16px;
+    width: 25px;
+    height: 25px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    /* color: #aaa; */
+    opacity:0.7;
+}
+
+.modal .modal-btn-close:hover { 
+    opacity:1; 
+}  
+
+.modal .modal-btn-ok {
+    /* position: absolute; */
+    bottom: 20px;
+    right: 30px;
+    min-width: 50px;
+    height: 32px;
+    padding:9px;
+
+    text-align: center;
+    cursor: pointer;
+    background: #456CB3;
+    color: #fff;
+    border-radius: 2px;
+    border: none;
+    font-size: 14px;
+    font-weight: normal;
+    box-sizing: border-box;
+}
+.modal {
+    font-size:0.9em;
+}
+.modal h1{
+    font-size:1.2em;
+}
+
+.modal h2{
+    font-size:1.1em;
+    font-weight:bold;
+    margin:12px 0px;
+    border-bottom:1px solid #eee;
+    max-width:97%;
+}
+
+/* the entire detail's container (which might be then a child of a dialog */
+.entry-details{
+    margin-top:1.5em;
+    max-height:200px;
+    overflow:auto;
+}
+.entry-details .row {
+    margin-bottom:0.3em;
+}
+.entry-details .row .name{
+    font-weight: bold;
+    display:inline-block;
+    margin-right:0.5em;
+}
