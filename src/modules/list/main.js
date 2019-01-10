@@ -84,7 +84,7 @@ class List{
             ['Method','request','method','slim'],
             ['Status','response','statusCode', 'slim'],
             ['Type','request','type','type'],
-            ['𝄙','special','showDetails', 'show-details']
+            // ['𝄙','special','showDetails', 'show-details']
         ]);
         //setting reference to our entries map
         //this.table.setEntries(this.entries);
