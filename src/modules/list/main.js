@@ -21,8 +21,17 @@ class List{
         //Map of all Entry objects by requestId, for this tab. 
         //**Referenced** in e.g. table.js
         this.entries = new Map();
-        
+
+        //these are the 'visible' ones, e.g. after filtering. 
+        this.entriesVisible = new Map();
+
+        //lightdom element
+        this.ltable = null;
+
+        //table.js object:
         this.table = null;
+
+        //details.js object:
         this.details = null;
 
         //element (lightdom)
@@ -69,23 +78,22 @@ class List{
 
     run(){
         this.lstatus = l('#status');
-
-        //html table 
-
-        //#entriesTable - <table> declared in index.html
-        this.table = new Table(document.querySelector('#entriesTable'));
+        this.ltable = l('#entries-table')
+        //#entries-table - <table> declared in index.html
+        this.table = new Table(this.ltable[0]);
 
         this.table.setColumns([
             //display, request|reponse, key, css class (optional)
             ['ID','request','requestId','slim'],
             //['URL','request','url'],
-            ['Domain','special','host'],
-            ['Name','special','pathNameSmart','path-name-smart'],
+            ['Domain','special','host','url-domain'],
+            ['Name','special','pathNameSmart','url-name'],
             ['Method','request','method','slim'],
             ['Status','response','statusCode', 'slim'],
             ['Type','request','type','type'],
             // ['𝄙','special','showDetails', 'show-details']
         ]);
+        this.table.make();
         //setting reference to our entries map
         //this.table.setEntries(this.entries);
 
@@ -119,13 +127,21 @@ class List{
         //interface
 
         //buttons for clearing, closing, opening new netmon tools.
+        
         if(this.queryTab === 'all'){
             l('#showFull').css('display','none');    
-            l('#clearTab').css('display','none');        
+            l('#clearTab').css('display','none'); 
         }
+
+        //these are about 'full window' vs 'popup', not about reading a particular tab or not.
         if(this.mode === 'full'){
             l('#showFull').css('display','none');  
+            l('#popOut').css('display','none');  
         }
+        if(this.mode === 'popup'){
+            l('#clearAll').css('display','none');  
+        }
+
         l('#showFull').on('click',()=>{
             chrome.tabs.create({url:chrome.extension.getURL("modules/list/index.html?mode=full")}, function(tab) {
             });
@@ -153,11 +169,11 @@ class List{
         })
 
         this.details = new EntryDetails(l('#modal-entry-details .content')[0]);
-        const lTableBody =  l('#entriesTable tbody');
+        const lTableBody =  l('#entries-table tbody');
         lTableBody.on('click',ev => {
             const lTarget = l(ev.target);
             //details popup
-            if(lTarget.is('#entriesTable tbody tr *')){
+            if(lTarget.is('#entries-table tbody tr *')){
                 const reqestId = lTarget.closest('tr').attr('data-requestid');
                 const entry = this.entries.get(reqestId);
                 if(!entry){
@@ -172,6 +188,7 @@ class List{
         //filtering
         l('#filter #filter-text').on('input',(ev) => {
             this.updateTable();
+            this.updateStatus();
         });
     }
 
@@ -214,9 +231,10 @@ class List{
             message.result.forEach(([k,v])=>{
                 this.entries.set(k,v);
             });
+            
+
             //initial build, this will make the header (columns)
             //then .updateTable will also add the rows. p.s. this.entries will *not* be stored 'for later' by `table`.
-            this.table.make();
             this.updateTable();
             this.updateStatus();
         }
@@ -242,17 +260,27 @@ class List{
         }else if (eventName === 'onSendHeaders'){
             this.entries.get(details.requestId)['request']['headers'] = details.requestHeaders;	            
         }else if (eventName === 'onCompleted'){
-            this.entries.get(details.requestId)['response'] = details;
+            const entry = this.entries.get(details.requestId);
+            //this.entries.get(details.requestId)['response'] = details;
+            entry.response = details;
             //renaming 'responseHeaders' to simply 'headers' for consistency
             //tests:
             //this.table.remove(); this.table.make();//works ok, whole table recreated.
-            this.table.addRow(this.entries.get(details.requestId));
+            if(this.matches(entry, this.getFilters())){
+                //resultEntries.set(requestId, entry);
+                this.table.addRow(entry);
+            }
+            //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
             this.updateStatus();
         }else if (eventName === 'entriesClearedNotification'){
             //something somewhere did a log clearing, we don't care here if it's us or not, we'll just reread.
             this.clearData();
             this.readAwaiting();
         }                
+    }
+
+    addTableRow(entry){
+        const m = new Map();
     }
 
     /**
@@ -262,15 +290,18 @@ class List{
     updateTable(){
         //removing table body rows:
         this.table.remove(false,true);
+
+        //we store it in entriesVisible for future reference (e.g. in this.updateStatus). 
+        //If there is no filtering then this.entriesVisible will be an exact copy of this.entries
+        this.entriesVisible = this.getFiltered(this.entries);
         //readding (or adding for the first time, doesn't matter)
-        let filtered = this.getFiltered(this.entries);
-        this.table.addRows(filtered);
+        this.table.addRows(this.entriesVisible);
     }
 
     updateStatus(){
         let statusString = '';
         const entriesTotal = this.entries.size;
-        const entriesVisible = this.entries.size;//@todo - change that when filtering implemented
+        const entriesVisible = this.entriesVisible.size;//@todo - change that when filtering implemented
         if(entriesTotal === entriesVisible){
             statusString = `${entriesTotal} requests`;
         }else{
@@ -280,46 +311,76 @@ class List{
     }
 
     /**
+     * Based on GUI prepares and object with filters, like 'text'. Also 'active' which tells if there is 
+     * any filtering at all
+     */
+    getFilters(){
+        let filters = {
+            active: false,//one or more of the filters is active?
+            text: '',//original one (although trimmed)
+            textRegExp: null, //RegExp object (or null) -  prepared for actual regex test.
+            //in future versions here we'll have  maybe mimetype etc.
+        }
+
+        filters.text = document.querySelector('#filter #filter-text').value;
+        filters.text = filters.text.trim();
+
+        
+        if( filters.text != ''){
+            filters.active = true;
+            //is it wrapped in // ? Like '/blah.*/' - then user wants to treat it as a regex. 
+            if(utils.hasRegexDelimeters(filters.text)){
+                //we'll use only what's inside the / and / - just like it is.
+                filters.textRegExp = new RegExp(filterText.substring(1, filters.text.length-1), "i");    
+            }else{//otherwise we'll escape things like ? or * to do literal matching.
+                filters.textRegExp = new RegExp(utils.escapeRegExp(filters.text), "i");
+            }
+        }
+
+        return filters;
+    };
+
+    /**
+     * Tells if an entry matches given filters
+     * @param {*} entry - request object
+     * @param {*} filters - filters object returned by this.getFilters
+     */
+    matches(entry, filters){
+        if (!filters.active){
+            return true;
+        }
+
+        //ok, there is at least one filter active. All tests must pass.
+        let result = true;
+        //text filter
+        if(filters.textRegExp && !filters.textRegExp.test(entry.request.url)){
+            result = false;
+        }
+        //and so on.... 
+        return result;
+    }
+
+    /**
      * Filters given Map by using the filters in the interface
      * Returns exactly the same 'entries' map in case there are no filters active
      * Otherwise returns a modified copy. 
      */
     getFiltered(entries){
-        //one or more of the filters is active?
-        //we first test if there are any filters at all, to quit as quick as possible if there are none.
-        let filtersActive = false;
+        const filters = this.getFilters();
 
-
-        let filterText = document.querySelector('#filter #filter-text').value;
-        filterText = filterText.trim();
-
-        if(filterText != ''){
-            filtersActive = true;
-        }
-
-        //more tests.
-        if (!filtersActive){
+        //no filtering at all, we return *now* with no further processing (for performance reasons, we just have
+        //nothing to do here)
+        if (!filters.active){
             return entries;
         }
+
         //ok, there is at least one filter active
         const resultEntries = new Map();
-        let filterTextRegex = null;
-        if( filterText != ''){
-            //is it wrapped in // ? Like '/blah.*/' - then user wants to treat it as a regex. 
-            if(utils.hasRegexDelimeters(filterText)){
-                //we'll use only what's inside the / and / - just like it is.
-                filterTextRegex = new RegExp(filterText.substring(1, filterText.length-1), "i");    
-            }else{//otherwise we'll escape things like ? or * to do literal matching.
-                filterTextRegex = new RegExp(utils.escapeRegExp(filterText), "i");
-            }
-        }
+
         var t0 = performance.now();
-        this.entries.forEach((entry, requestId) => {
-            let add = true;
-            if(filterTextRegex && !filterTextRegex.test(entry.request.url)){
-                add = false;
-            }
-            if(add){
+        entries.forEach((entry, requestId) => {
+ 
+            if(this.matches(entry, filters)){
                 resultEntries.set(requestId, entry);
             }
         });
@@ -329,6 +390,7 @@ class List{
         return resultEntries;
     }
 
+   
     //logging on behalf on background.js - easier to observe it than with 'inspect popup' on chrome
     //yeah, pretty akward.
     logBkg(param){

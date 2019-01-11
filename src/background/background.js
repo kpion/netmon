@@ -245,7 +245,11 @@ class Monitor{
 	}
 
 	onSendHeaders(details){
-		//this.entries[details.requestId]['request']['headers'] = details.requestHeaders;		
+		//might be that user did 'clear' while this request was still going on.
+		if(!this.entries.has(details.requestId)){
+			logger.log('no entry for ' + details.requestId + ':',details);
+			return;
+		}		
 		this.entries.get(details.requestId)['request']['headers'] = details.requestHeaders;
 		this.onWebRequest('onSendHeaders',details);
 	}
@@ -255,6 +259,12 @@ class Monitor{
 	}*/
 
 	onCompleted(details){
+		//no such thing yet (or already) not sure why but this ... happens
+		//maybe it's a matter of deleting entries (clear) while there are still on going ones.
+		if(!this.entries.has(details.requestId)){
+			logger.log('no entry for ' + details.requestId + ':',details);
+			return;
+		}			
 		//this.entries[details.requestId]['response'] = details;
 
 		//renaming 'responseHeaders' to simply 'headers' for consistency
@@ -267,7 +277,7 @@ class Monitor{
 	}
 
 	onErrorOccurred(details){
-		//no such thing yet, not sure why but this ... happens
+		//no such thing yet (or already), not sure why but this ... happens
 		if(!this.entries.has(details.requestId)){
 			logger.log('no entry for ' + details.requestId + ':',details);
 			return;
@@ -305,11 +315,13 @@ class Monitor{
 			console.assert(parseInt(criteria.tabId) == criteria.tabId);
 			srcEntries = this.tabEntries.get(parseInt(criteria.tabId));
 		};
+		
 		//even if both are defined, that is fine
 		if(typeof criteria.requestId !== 'undefined'){
 			srcEntries = this.entries.get(criteria.requestId);
 			logger.log('reading by requestId: ' + criteria.requestId);
 		};
+
 		if(typeof srcEntries === 'undefined'){
 			return {};
 		}

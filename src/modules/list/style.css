@@ -29,59 +29,49 @@ body{
     }
 }
 
-/* most if these things is to have fixed columns position */
-.entries-table{
+/* most if these things exist to have fixed header position */
+
+#entries-table{
     width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
     background-color: #fff;
-    
+    cursor: default ; 
 }
 
-.entries-table thead {
-    /* background: black;
-    color:#fff; */
+
+#entries-table thead{
+    overflow-y: scroll;
+    display: table;
+    table-layout: fixed;
+    width: calc(100% - 16px); /* assuming scrollbar width as 16px */
     background-color: #eaeaea;
-}
-
-.entries-table thead tr {
-    display: block;
-}
-
-
-.entries-table tbody{
-    display:block;
-    width: 100%;
-    overflow: auto;
-    height: 300px;
-}
-
-.entries-table thead th{
-    border-top: 1px solid #cbcbcb;
-    border-bottom: 1px solid #cbcbcb;
-}
-
-.entries-table th, .entries-table td {
-    padding: 4px;
-    text-align: left;
-    display: inline-block;
-    width: 200px;  
-    border-left: 1px solid #dbdbdb;
+}      
     
-}	
- 
-.entries-table th:last-child, .entries-table td:last-child  {
-    border-right: 1px solid #dbdbdb;
+#entries-table tbody{
+    
+    table-layout: fixed;
+    display: block;
+    overflow: auto;
+    height: 200px;
 }
-/*
-.entries-table tbody tr:last-child {
-    border-bottom: 1px solid #cbcbcb;
-} */
 
+#entries-table tr{
+    width: 100%;
+    display: table;
+    table-layout: fixed;
+}
 
-
-
-.entries-table td span{
+#entries-table tr td, 
+#entries-table tr th{
+    border:1px solid #eaeaea;
+    height:1.5em;
+    padding-left:5px;
+    padding-right:5px;
+    text-align: left;
+}
+#entries-table tr th{
+    border:1px solid #dadada;
+}
+#entries-table td span{
     display: block;
     white-space: nowrap;
     overflow:hidden;
@@ -89,41 +79,40 @@ body{
 
 /** specific columns **/
 
-.entries-table th.slim, .entries-table td.slim{
-    width:55px;
+#entries-table .col-slim{
+    /* width:55px; */
+    width:60px;
 }
-.entries-table th.type, .entries-table td.type{
+#entries-table .col-type{
     width:80px;
 }
-.entries-table th.path-name-smart, .entries-table td.path-name-smart{
-    width:350px; 
-    
+
+#entries-table  .col-url-domain{
+    width:20%;
 }
-.entries-table th.show-details, .entries-table td.show-details{
-    width:25px;
-    cursor: pointer;
+
+
+#entries-table  .col-url-name{
+    width:40%;
 }
 
 /* other things related to entries table, like hover, selected maybe etc */
 
 
-.entries-table tr:nth-child(even) {
+#entries-table tr:nth-child(even) {
     background-color:#f3f3f3;
 }
 
-.entries-table tbody tr:hover {
+#entries-table tbody tr:hover {
     background-color:#f1f6fd;
 }
 
-.entries-table tbody tr:nth-child(even):hover {
+#entries-table tbody tr:nth-child(even):hover {
 
     background-color:#f1f6fd;
     /* background-image: linear-gradient(0deg, rgba(0,0,255,0.1) 0%, rgba(0,0,255,0.1) 100%); */
 }
 
-.entries-table {
-    cursor: default ; 
-}
 
 
 /*

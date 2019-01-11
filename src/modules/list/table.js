@@ -5,31 +5,36 @@
  */
 class Table{
   
-    constructor(tableElement, columns, data){
-      this.tableEl = tableElement;
-      this.tableTheadEl = document.querySelector('thead',tableElement);
-      this.tableTbodyEl = document.querySelector('tbody',tableElement);
-      this.setColumns(columns);
-      //this.setEntries(data);
-      
-      this.autoScrollEnabled = true;
-      this.autoScrollJustDone = false;
-      this.tableTbodyEl.addEventListener('scroll',(ev)=>{
+    constructor(tableElement, columns){
+        this.tableEl = tableElement;
+        this.tableHeadEl = document.querySelector('thead',tableElement);
+        this.tableBodyEl = document.querySelector('tbody',tableElement);
+        this.setColumns(columns);
+        
+        
+        //autoscrolling 
+        this.autoScrollEnabled = true;
+        this.autoScrollJustDone = false;
+        this.tableBodyEl.addEventListener('scroll',(ev)=>{
         //did *user* do the scroll? If so, then maybe we will enable / disable autoscroll.
         if(!this.autoScrollJustDone){
             //did he/she scroll to the bottom? If not, then we'll disable autoscroll
-            this.autoScrollEnabled = (this.tableTbodyEl.scrollTop === this.tableTbodyEl.scrollHeight - this.tableTbodyEl.clientHeight);
+            this.autoScrollEnabled = (this.tableBodyEl.scrollTop === this.tableBodyEl.scrollHeight - this.tableBodyEl.clientHeight);
         }
         this.autoScrollJustDone = false;
-      })
-      
+        })
+        
+        //adjusting styles (widths mainly)
+        setInterval(()=>{
+            this.adjustStyles();
+        },100)
     }
 
     /*
     @param columns: array of {object,val,display} where object is request or response.
     */
     setColumns(columns){
-      this.columns = columns;
+        this.columns = columns;
     }
     
     /**
@@ -45,10 +50,10 @@ class Table{
     //remove head and or body
     remove(removeHead = true, removeBody = true){
         if(removeHead){
-            utils.removeChildren(this.tableTheadEl);
+            utils.removeChildren(this.tableHeadEl);
         }
         if(removeBody){
-            utils.removeChildren(this.tableTbodyEl);
+            utils.removeChildren(this.tableBodyEl);
         }        
     }
 
@@ -57,15 +62,7 @@ class Table{
             console.error('tableEl is empty');return;
         }
         const head = this.makeHead();
-        //const body = this.makeBody();
-        //console.log('head:');console.dir(head.cloneNode(true));//cloneNode because we'll soon move them
-        //console.log('body:');console.dir(body.cloneNode(true));//cloneNode because we'll soon move them
-        this.tableTheadEl.appendChild(head);
-        //this.tableTbodyEl.appendChild(body);
-
-        // if(this.autoScrollEnabled){
-        //     this.scrollToBottom();
-        // }
+        this.tableHeadEl.appendChild(head);
         if(entries){
             this.addRows(entries);
         }
@@ -85,7 +82,7 @@ class Table{
 
         th.textContent = column[0];//0: display
         if(column[3]){//css class
-            th.classList.add(column[3]);
+            th.classList.add('col-' + column[3]);
         }
         tr.appendChild(th);  
       }
@@ -154,7 +151,7 @@ class Table{
                 td.setAttribute('title',tdTitle);
             }
             if(column[3]){//css class
-                td.classList.add(column[3]);
+                td.classList.add('col-' + column[3]);
             }              
             td.appendChild(span);
             tr.appendChild(td);  
@@ -176,7 +173,7 @@ class Table{
     */
     addRow(entry){
         const tr = this.makeRow(entry);
-        this.tableTbodyEl.appendChild(tr);
+        this.tableBodyEl.appendChild(tr);
         if(this.autoScrollEnabled){
             this.scrollToBottom();
         }
@@ -184,17 +181,25 @@ class Table{
 
     addRows(entries){
         const rows = this.makeRows(entries);
-        this.tableTbodyEl.appendChild(rows);
+        this.tableBodyEl.appendChild(rows);
         if(this.autoScrollEnabled){
             this.scrollToBottom();
         }        
     }
-    
+
     scrollToBottom(){
         this.autoScrollJustDone = true;
-        this.tableTbodyEl.scrollTop = this.tableTbodyEl.scrollHeight - this.tableTbodyEl.clientHeight;
+        this.tableBodyEl.scrollTop = this.tableBodyEl.scrollHeight - this.tableBodyEl.clientHeight;
         
     }
-
+    adjustStyles(){
+        const headWidth = this.tableHeadEl.clientWidth;
+        const bodyWidth = this.tableBodyEl.clientWidth;
+        if(headWidth !== bodyWidth){
+            this.tableHeadEl.style.width = bodyWidth + 'px';  
+            //console.log('changed to ' + bodyWidth + 'px')
+        }
+        //head.style.width = body.clientWidth + 'px';
+    }
   }
   

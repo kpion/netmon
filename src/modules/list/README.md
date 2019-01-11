@@ -6,7 +6,7 @@ table.js - only manages the `<table>` element.
 
 the html page should contain the following:
 ```
-<table id = 'entriesTable' class="pure-table entriesTable" >
+<table id = 'entries-table' class="pure-table entries-table" >
     <thead></thead>
     <tbody></tbody>
 </table>  
