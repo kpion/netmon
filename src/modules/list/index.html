@@ -2,7 +2,7 @@
 <html>
   <head>
       <meta charset="UTF-8">
-
+      <title>Netmon - requests</title>
       <script src="../../common/utils.js"></script>
       <script src="../../lib/lightdom.js"></script>
       <script src="../../common/app.js"></script>
@@ -16,10 +16,8 @@
       <link rel="stylesheet" type="text/css" href="style.css">
   </head>
   
-  <body >
-    <div id = 'header'></div>
-
-    <div id = 'toolbar'>
+  <body>
+    <div id = 'toolbar' class = 'bar'>
       <span id = 'filter'>
         <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
       </span> 
@@ -29,13 +27,13 @@
       <thead></thead>
       <tbody></tbody>
     </table> 
-    <div id = 'status'></div>
+    <div id = 'status' class = 'bar'></div>
 
-    <div>
+    <div id = 'buttons-bar' class = 'bar'>
       <button  id = 'popOut' class = 'pure-button' title = 'Pop-out this tab'>Pop-out</button>
       <button  id = 'clearTab' class = 'pure-button' title = 'Clear this tab traffic'>Clear</button>
 
-      <button  id = 'showFull' class = 'pure-button' title = 'Show all tabs traffic'>All tabs monitor</button>
+      <button  id = 'showFull' class = 'pure-button' title = 'Show all tabs traffic'>General monitor</button>
       <button  id = 'clearAll' class = 'pure-button'>Clear everything (all tabs)</button>
     </div>
 

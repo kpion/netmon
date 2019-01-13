@@ -32,6 +32,20 @@ utils = {
             parentNode.removeChild(last);
         }
     },
-  
-
+    
+    /**
+     * Deletes the very first N elements of a Map. In the insertion order.
+     * @param {Map} map 
+     * @param {int} count 
+     */
+    deleteMapHead(map, count = 1){
+        const keys = map.keys();
+        let index = 0;
+        for (var key of keys) {
+    	    map.delete(key);
+    	    if(++index >= count){
+    	        break;
+    	    }
+        }
+    }
 };

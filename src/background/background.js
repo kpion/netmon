@@ -5,6 +5,102 @@ const logger = new Logger('',app.isDev());
 //
 logger.log('netmon started');
 
+/**
+ * As *current* as possible state of all tabs opened in all windows.
+ * 
+ * Made for quick access for tab info, without quering the browser every single time 
+ * (with chrome.tabs.query or similar).
+ * 
+ * 
+ */
+class Tabs{
+
+	constructor(){
+
+		//all the info as it is when doing chrome.tabs.query({}...)
+		//indexed under tab.id
+		//we don't want new Map, because we don't care about the order and other features.
+		this.tabs = {};
+		this.updateAll();
+		chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+			if(details.frameId === 0){//main frame, not some sub iframes
+				this.update(details.tabId);//btw, only a fraction shorter than simply this.updateAll
+			}
+		});
+
+		chrome.webNavigation.onTabReplaced.addListener((details) => {
+			this.updateAll();//only a few miliseconds for 20 tabs on not-so-decent cpu, no worries
+		});
+		chrome.tabs.onRemoved.addListener((details) => {
+			this.updateAll();//only a few miliseconds for 20 tabs on not-so-decent cpu, no worries
+		});
+	}
+	/**
+	 * removes and then re-adds all tabs info. Async.
+	 */
+	updateAll(callback = null){
+		chrome.tabs.query({},tabs => {
+			//removing old
+			this.tabs = {};
+			tabs.forEach(tab => {
+				this.tabs[tab.id] = tab;
+			});
+			if(callback){
+				callback();
+			}
+		});;
+	}
+
+	/**
+	 * updates one tab in our cache, plus calls a callback with the fresh info. 
+	 * usage: .update(111,tab => {...just one tab object...})
+	 */
+	update(tabId, callback = null){
+		chrome.tabs.get(tabId, tab=>{
+			this.tabs[tabId] = tab;
+			if(callback){
+				callback(tab);
+			}
+		});
+	}
+	/**
+	 * 
+	 * true if we have this tab id. Not really needed, but meh.
+	 */
+	is(tabId){
+		return tabId in this.tabs;
+	}	
+
+	/**
+	 * returns given tab in our *cache*, or null if missing.
+	 * will not query the browser for this info.
+	 */
+	get(tabId){
+		if(tabId in this.tabs === false) {
+			return null;
+		}
+		return this.tabs[id];
+	}
+
+	/**
+	 * gets (via callback!) a tab info from the our cache and if not found, queries 
+	 * the browser for it and stores in cache for future reference.
+	 * A tab could be not in the cache when e.g. appeared recently
+	 * usage: .getOrQuery(111,tab=>{...tab is a single object...});
+	 */
+	getOrQuery(tabId, callback){
+		let existing = this.get(tabId);
+		if(existing){
+			if(callback){
+				callback(existing);
+			}
+			return;
+		}
+		//there is none like this, might be removed, or maybe it has just appeared recently
+		//this one will query the browser and update our cache. And call the callback.
+		this.update(tabId, callback);
+	}
+}
 
 class Monitor{
 	constructor (){
@@ -20,7 +116,20 @@ class Monitor{
 		this.tabEntries = new Map();
 
 		//Array of objects with *Ports* and criteria (like tabId), see onMessage.
+		//So a single item object might be like:
+		// {
+		// 	port : port,
+		// 	criteria: {tabId:2232}, 
+		// }
 		this.subscribers = [];
+
+		//this one servers only some non-very-important information about e.g. tab title, url etc.
+		this.tabs = new Tabs();
+
+		//internal log, for debugging and stuff. Consists of objects with 
+		//{ message: and data: }
+		//use this.addInternalLog();
+		this.internalLog = [];
 	}
 
 	//alias for .init
@@ -54,9 +163,14 @@ class Monitor{
 		//it seems we need this one as well, even if we have onBeforeRequest, because
 		//onBeforeRequest does not accept requestHeaders as an extra option, and this one - onSendHeaders
 		//does not accept requestBody o.O
+		//anyway, these are requests headers. Just btw: there is also onBeforeSendHeaders but we don't want it,
+		//because subsequent extensions might modify stuff later. While this one here is the 'actual' one which will
+		//really be sent.
 		chrome.webRequest.onSendHeaders.addListener(
 			(details) => {this.onSendHeaders(details)},
 			filter,["requestHeaders"]);
+
+
 
 		//onHeadersReceived i.e. response headers.
 		//here we can theoretically modify the headers, which we don't want to, so we'll just
@@ -118,7 +232,12 @@ class Monitor{
 				}
 			})
 
-		});			
+		});		
+		
+		//auto clearing
+		setInterval(() => {
+			this.autoClear();
+		}, 1000*60);
 	};
 
 	/**
@@ -157,6 +276,8 @@ class Monitor{
 					if(entry.request && entry.request.timeStamp){
 						if(entry.request.timeStamp < details.timeStamp){
 							//logger.log('removing: ',entry);
+							//only in the tabEntries because this is where we don't want the 'old' to show, we
+							//still want them in 'general view'.
 							theTabEntries.delete(key);
 						}else{
 							//logger.log('leaving alive: ',entry);
@@ -174,12 +295,16 @@ class Monitor{
 	*/
 	//On **all** the requests.
 	onWebRequest(eventName, details){
-		// logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
+		//logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
+		/*
 		for(var n in this.subscribers){
 			const subscriber = this.subscribers[n];
 			const port = subscriber.port;
 			let criteriaMatches = true;
-			if(subscriber.criteria && typeof subscriber.criteria.tabId !== 'undefined' && subscriber.criteria.tabId != details.tabId){
+			if(subscriber.criteria && 
+				typeof subscriber.criteria.tabId !== 'undefined' 
+				&& subscriber.criteria.tabId != details.tabId
+				){
 				criteriaMatches = false;
 			}
 			
@@ -197,23 +322,8 @@ class Monitor{
 				}					
 			}
 		}//end of looping subscribers
-		//old:
-		/*
-		const subscriber = this.tabsubscribers[details.tabId];
-		if(typeof subscriber !== 'undefined'){
-			const port = subscriber.port;
-			try{
-				port.postMessage({
-					command: 'subscription', 
-					eventName: eventName,
-					details: details,
-				});
-			}catch(error){
-				//logger.log('error with port.postMessage: ',error, ' subscribed removed');
-				//most probably 'disconnected port' or similar, removing.
-				delete this.tabsubscribers[details.tabId];
-			}			
-		}*/
+		*/
+		this.notifySubscribers(details.tabId, eventName, details);
 	}
 
 	/**
@@ -373,7 +483,7 @@ class Monitor{
 			//Is this clearing a specific tab only?
 			if(message.criteria && message.criteria.tabId)	{
 				let tabId = parseInt(message.criteria.tabId);
-				logger.log('clearing tab id: ' + tabId);
+				//logger.log('clearing tab id: ' + tabId);
 				console.assert(tabId == message.criteria.tabId);
 				
 				//first we'll get the entries from the given tab, grab their requestId and remove 
@@ -388,23 +498,136 @@ class Monitor{
 			}
 			else{
 				//removing absolutely everything
-				logger.log('clearing absolutely everything');
+				//logger.log('clearing absolutely everything');
 				this.tabEntries.clear();
 				this.entries.clear();
 			}
 			//notifing subscribers.
-			for(var n in this.subscribers){
-				const subscriber = this.subscribers[n];
+			this.notifySubscribers(null,'entriesClearedNotification',{});
+		}
+	}
+	/**
+	 * 
+	 * @param {} tabId : target tabId or an array of tabIds. If null, it won't be considered 
+	 * a filter (i.e. all listeners will get the message)
+	 * 
+	 * @param {string} eventName : e.g. onCompleted, onSendHeaders, but also custom like 'entriesClearedNotification'
+	 * 
+	 * @param {object} details : event's details, e.g. if it's 'onCompleted' it's the details posted by
+	 * chrome.webRequest.onCompleted.addListener. In case of custom events, this can be anything.
+	 */
+	notifySubscribers(tabId, eventName, details = {}){
+		//isTabId an array?
+		if(tabId !== null && typeof tabId === 'object' && typeof tabId.length !== 'undefined'){
+			tabId.forEach((ti) => {
+				this.notifySubscribers(ti,eventName, details = {});
+			})
+			return;
+		}
+		for(var n in this.subscribers){
+			const subscriber = this.subscribers[n];
+			const port = subscriber.port;
+			let criteriaMatches = true;
+
+			//tabId filtering?
+			if(tabId !== null && subscriber.criteria &&
+				typeof subscriber.criteria.tabId !== 'undefined' 
+				&& subscriber.criteria.tabId != tabId
+				){
+				criteriaMatches = false;
+			}
+			
+			if(criteriaMatches){
 				try{
-					subscriber.port.postMessage({
+					port.postMessage({
 						command: 'subscription', 
-						eventName: 'entriesClearedNotification',
-						details: {},
+						eventName: eventName,
+						details: details,
 					});
 				}catch(error){
+					//logger.log('error with port.postMessage: ',error, ' subscribed removed');
+					//most probably 'disconnected port' or similar, removing.
+					delete this.subscribers[n];
 				}					
 			}
 		}
+	}
+	/**
+	 * Part of auto clearing. Used in this.autoClear which is called periodically
+	 * @param {int} maxEntriesPerTab - max entries per tab, if found a bigger one, then removing is done.
+	 * 				We'll remove at least so many elements, that we'll reach this max
+	 * @param {int} removeCountBelowMax - if any tab found higher that the max, then, since we are at this, 
+	 * 				how many *more* elements should we remove, so we will not get into this process to often.
+	 * 
+	 * @return {array} array of tab ids which were "cleared"
+	 */
+	clearOversizedTabs(maxEntriesPerTab, removeCountBelowMax = 1){
+		let clearedTabs = [];
+		this.tabEntries.forEach((theTabEntries, tabId) => {
+			if(theTabEntries.size > maxEntriesPerTab){
+				const requestsIds = theTabEntries.keys();
+				let index = 0;
+				//so if the max is 10 and we have 15, then well remove 5 plus removeCountBelowMax
+				let removeCount = (theTabEntries.size - maxEntriesPerTab) + removeCountBelowMax;
+				//logger.log('clearing ' + removeCount + ' in ' + tabId);
+				for (let requestId of requestsIds) {
+					theTabEntries.delete(requestId);
+					this.entries.delete(requestId);
+					if(++index >= removeCount){
+						break;
+					}
+				}		
+				clearedTabs.push(tabId); 		
+			}
+		})
+		return clearedTabs;
+	}
+
+	/**
+	 * In case we get too fat (too many requests recorded), here we're removing older entries.
+	 * We are called here every few seconds.
+	 */
+	autoClear(){
+		//logger.log('autoClear started');
+		//this should be optional
+		//if any tab has more than x items, remove the overhead and a few more:
+		const limitPerTab = 1500;
+		let clearedTabs = this.clearOversizedTabs(limitPerTab,limitPerTab * 0.1);
+		if(clearedTabs.length > 0){
+			//send notification to the concerned tabs:
+			this.notifySubscribers(clearedTabs,'entriesAutoClearedNotification');
+			this.addInternalLog('autoClear - cleared tabs',{tabs: clearedTabs});
+		}
+		//if for any reason the main tab-agnostic this.entries map also have a ridicuusly large number of items:
+		//yeah, hard coded again. Should go to options somewhere, or maybe be based on the particular host
+		//machine speed.
+		const limitGlobal = 100000;
+		if(this.entries.size > limitGlobal){
+			const removeCount = (this.entries.size - limitGlobal) + (limitGlobal * 0.1);
+			utils.deleteMapHead(this.entries, removeCount);
+			//send notification to all the tabs:
+			this.notifySubscribers(null,'entriesAutoClearedNotification');
+			this.addInternalLog('autoClear - cleared general log (all tabs)',{removeCount: removeCount});
+		}
+		
+	};
+
+	/**
+	 * 
+	 * @param {string | object} message - a message or a whole object
+	 * @param {object} data : optional additional data
+	 */
+	addInternalLog(message, data = {}){
+		let log = {};
+		if(typeof message === 'object'){
+			log = message;
+		}else{
+			log = {
+				message: message,
+				data: data,
+			};
+		}
+		this.internalLog.push(log);
 	}
 }
 

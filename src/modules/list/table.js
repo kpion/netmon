@@ -96,8 +96,11 @@ class Table{
         const _td = document.createElement('td');   
         const _span = document.createElement('span');
         const url = new URL(entry.request.url);
+        let trClass = '';//might be something in case of statusCode == 404 etc.
         //console.log(entry,JSON.stringify(entry,null,' '));
         for (var colIndex in this.columns){ 
+            //whole line like ['Type','request','type','type']
+            //or ['Domain','special','host','url-domain']:
             const column = this.columns[colIndex];
             const td = _td.cloneNode(false);
             const span = _span.cloneNode(false);
@@ -122,13 +125,42 @@ class Table{
                     }
                     tdText = name.length > 0?name : url.host;
                 }
-            }else if (column[2] === 'type'){
+            }else {//not a 'special' column
+                //for starters:
                 tdText = entry[column[1]][column[2]];
-                if(tdText === 'xmlhttprequest'){
-                    tdText = 'xhr';
+                if (column[2] === 'type'){
+                    if(tdText === 'xmlhttprequest'){
+                        tdText = 'xhr';
+                    }
+                } else if (column[2] === 'statusCode'){
+
+                    if(typeof tdText !== 'undefined'){
+                        const statusCodeInt = parseInt(tdText);  
+                        if(statusCodeInt >= 200 && statusCodeInt <= 299){
+                            //OK
+                        }else if(statusCodeInt >= 300 && statusCodeInt <= 399){    
+                            //Redirection
+                        }else{
+                            //Error
+                            trClass = 'item-server-error';
+                        }
+                    }
+
+                    if(typeof tdText == 'undefined' || tdText == ''){
+                        tdText = 'waiting...';
+                        if(entry.response && entry.response.error){
+                            tdText = 'error';//initially
+                            /*
+                            //maybe a @todo - this one appears when ublock blocks, but only then? Besides in FX
+                            //it's a different message. 
+                            if(entry.response.error === 'net::ERR_BLOCKED_BY_CLIENT'){
+                                tdText = 'blocked';
+                            }*/
+                            tdTitle = entry.response.error;//e.g. net::ERR_BLOCKED_BY_CLIENT when blocked by ublock or adblock
+                            trClass = 'item-client-error';
+                        }
+                    }
                 }
-            } else{
-                tdText = entry[column[1]][column[2]];
             }
             /*
             //this actually happened only once, maybe in the future this should be uncommented.
@@ -156,6 +188,9 @@ class Table{
             td.appendChild(span);
             tr.appendChild(td);  
           }   
+        if(trClass){
+            tr.classList.add(trClass);  
+        }
         return tr;
     }
     
@@ -187,6 +222,22 @@ class Table{
         }        
     }
 
+    findRow (requestId){
+        return document.querySelector('tr[data-requestid="'+requestId+'"]',this.tableEl);
+    }
+
+    /**
+     * updates info in a row, by requestId
+     */ 
+    updateRow(entry){
+        const requestId = entry.request.requestId;
+        const trEl = this.findRow(requestId);
+        if(!trEl){
+            return null;
+        }
+        trEl.replaceWith(this.makeRow(entry));
+        return trEl;
+    }
     scrollToBottom(){
         this.autoScrollJustDone = true;
         this.tableBodyEl.scrollTop = this.tableBodyEl.scrollHeight - this.tableBodyEl.clientHeight;

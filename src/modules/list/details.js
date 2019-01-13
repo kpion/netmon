@@ -77,7 +77,9 @@ class EntryDetails{
         this.makeRow(this.container,'Request URL', entry.request.url);
         this.makeRow(this.container,'Request Method', entry.request.method);
         this.makeRow(this.container,'Status Code', entry.response.statusCode);
-        
+        if(entry.response.error){
+            this.makeRow(this.container,'Error', entry.response.error);
+        }
         this.makeTitle(this.container, 'Response headers');
         if(entry.response.headers){
             this.headersSort(entry.response.headers);

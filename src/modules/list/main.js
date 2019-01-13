@@ -105,6 +105,7 @@ class List{
             this.onMessage(message);
         });
 
+        //used for subscribing and maybe other things (e.g. clearing this tabs' log)
         let criteria = {};
         if(this.queryTab !== 'all'){
             criteria.tabId = this.queryTab;
@@ -218,7 +219,7 @@ class List{
      */ 
     clearData(){
         this.entries.clear();
-        this.table.remove(true,true);
+        this.table.remove(false,true);
     }
 
     //message (callback) from our port (probably from background js in response to our 'command')
@@ -227,9 +228,12 @@ class List{
 
         //callback in response to *our* initialQuery query
         if(message.callbackData && message.callbackData.action == 'initialQuery' ){
-            //we need to convert an array to a map
+            //we need to convert an array to a map. This needs to be an array initially, because there are
+            //some issues with chrome when sending a Map from background.js
             message.result.forEach(([k,v])=>{
-                this.entries.set(k,v);
+                let entry = new Entry();
+                Object.assign(entry,v);//this actually could be moved to a Entry constructor.
+                this.entries.set(k,entry);
             });
             
 
@@ -257,23 +261,27 @@ class List{
             const entry = new Entry();
             entry.request = JSON.parse(JSON.stringify(details));
             this.entries.set(details.requestId, entry);
-        }else if (eventName === 'onSendHeaders'){
-            this.entries.get(details.requestId)['request']['headers'] = details.requestHeaders;	            
-        }else if (eventName === 'onCompleted'){
-            const entry = this.entries.get(details.requestId);
-            //this.entries.get(details.requestId)['response'] = details;
-            entry.response = details;
-            //renaming 'responseHeaders' to simply 'headers' for consistency
-            //tests:
-            //this.table.remove(); this.table.make();//works ok, whole table recreated.
+
             if(this.matches(entry, this.getFilters())){
-                //resultEntries.set(requestId, entry);
                 this.table.addRow(entry);
+            }            
+        }else if (eventName === 'onSendHeaders'){
+            const entry = this.entries.get(details.requestId);
+            if(entry){
+                entry['request']['headers'] = details.requestHeaders;	            
             }
+        }else if (eventName === 'onCompleted' || eventName === 'onErrorOccurred'){
+            const entry = this.entries.get(details.requestId);
+            entry.response = details;
+            this.table.updateRow(entry);
             //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
             this.updateStatus();
-        }else if (eventName === 'entriesClearedNotification'){
-            //something somewhere did a log clearing, we don't care here if it's us or not, we'll just reread.
+        }else if (
+            eventName === 'entriesClearedNotification' || 
+            eventName === 'entriesAutoClearedNotification'
+            ){
+            //logger.log('cleared!: ', eventName);
+            //user somewhere did a *manual* cleaning, we don't care here if it's us or not, we'll just reread.
             this.clearData();
             this.readAwaiting();
         }                
@@ -398,7 +406,9 @@ class List{
     }
 }
 
+//this one (list object) is here only because it's easier to debug stuff from the console in a browser, otherwise 
+//it could as well be in the below anon. funk.
+const list = new List();
 l(function (){
-    const list = new List();
     list.initAndRun();
 })

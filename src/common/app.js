@@ -54,6 +54,7 @@ class Logger{
 class Entry{
 
 	constructor(){
-		this.request = this.response = {};
+        //request and reponse come directly from browser, 'extra' is something this app fills.
+		this.request = this.response = this.extra = {};
 	}	
 }

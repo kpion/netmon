@@ -1,40 +1,55 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html{
+    height:100%;
+}
+
 body{
     font-family: sans-serif; 
     font-size: 13px;/* default in chrome extensions and also dev tools , so we're normalizing here */
     margin:0px;
     color: #333;
     background-color: #eee;
+    height:100%;
 }
 
 :root{
     --dlg-width:500px;/* modal dialog */
+    --bar-height:24px;/* every single one of: toolbar, status bar, bottom-bar - will have exactly this height */
 }
+
 
 /* this means we are in a popup */
 @media (max-width: 800px) {
-    body{
+    html{
         /* max for both fx and chrome */
         width:800px;
+        height:300px;
     }
 }
 
 /* this means we are probably in full mode */
 @media (min-width: 801px) {
-    body{
+    html{
         /* max for both fx and chrome */
         width:100%;
     }
 }
-
+/*  toolbar, status bar, bottom-bar  */
+.bar{
+    height: var(--bar-height);
+    overflow:hidden;
+}
 /* most if these things exist to have fixed header position */
 
 #entries-table{
     width: 100%;
     background-color: #fff;
     cursor: default ; 
+
+    height:calc(100% - var(--bar-height) * 3 - 1px);
+    display:block;
 }
 
 
@@ -42,6 +57,7 @@ body{
     overflow-y: scroll;
     display: table;
     table-layout: fixed;
+    
     width: calc(100% - 16px); /* assuming scrollbar width as 16px */
     background-color: #eaeaea;
 }      
@@ -51,18 +67,22 @@ body{
     table-layout: fixed;
     display: block;
     overflow: auto;
-    height: 200px;
+    /* height: 200px;  */
+    height:calc(100% - 21px);/*assuming thead has this number of pixels in height */
 }
 
 #entries-table tr{
     width: 100%;
+    height:2em;
     display: table;
     table-layout: fixed;
+
 }
 
 #entries-table tr td, 
 #entries-table tr th{
-    border:1px solid #eaeaea;
+    /* border:1px solid #eaeaea; */
+    border-bottom:1px solid #eaeaea;
     height:1.5em;
     padding-left:5px;
     padding-right:5px;
@@ -77,11 +97,40 @@ body{
     overflow:hidden;
 }
 
+#entries-table tr:nth-child(even) {
+    background-color:#f4f4f4;
+}
+
+#entries-table tbody tr:hover {
+    background-color:#f1f6fd;
+}
+
+#entries-table tbody tr:nth-child(even):hover {
+    background-color:#f1f6fd;
+    /* background-image: linear-gradient(0deg, rgba(0,0,255,0.1) 0%, rgba(0,0,255,0.1) 100%); */
+}
+
+
+/*
+Server error item, like 404. Applies to the whole tr
+*/
+#entries-table  tr.item-server-error{
+    color: #E71010;
+}
+
+/*
+Client error item, like 'blocked by client', applies to the whole tr element.
+*/
+#entries-table  tr.item-client-error{
+    color: #E74010;
+}
+
+
 /** specific columns **/
 
 #entries-table .col-slim{
     /* width:55px; */
-    width:60px;
+    width:55px;
 }
 #entries-table .col-type{
     width:80px;
@@ -96,22 +145,7 @@ body{
     width:40%;
 }
 
-/* other things related to entries table, like hover, selected maybe etc */
 
-
-#entries-table tr:nth-child(even) {
-    background-color:#f3f3f3;
-}
-
-#entries-table tbody tr:hover {
-    background-color:#f1f6fd;
-}
-
-#entries-table tbody tr:nth-child(even):hover {
-
-    background-color:#f1f6fd;
-    /* background-image: linear-gradient(0deg, rgba(0,0,255,0.1) 0%, rgba(0,0,255,0.1) 100%); */
-}
 
 
 
