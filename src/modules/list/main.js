@@ -281,19 +281,21 @@ class List{
                 logger.log('...but wasn\'t matching');
             };            
         }else if (eventName === 'onSendHeaders'){
-            const entry = this.entries.get(details.requestId);
+            const entry = this.entries.get(details.request.requestId);
             if(entry){
-                entry['request']['headers'] = details.requestHeaders;	            
+                //entry['request']['headers'] = details.requestHeaders;	            
+                Object.assign(entry,JSON.parse(JSON.stringify(details)));
             }
         }else if (eventName === 'onCompleted' || eventName === 'onErrorOccurred'){
-            const entry = this.entries.get(details.requestId);
+            const entry = this.entries.get(details.response.requestId);
             if(entry){
-                entry.response = details;
+                //entry.response = details;
+                Object.assign(entry,JSON.parse(JSON.stringify(details)));
                 this.table.updateRow(entry);
                 //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
                 this.updateStatus();
             }else{
-                logger.log('warning, no entry for ' + details.requestId);
+                logger.log('warning, no entry in list view for ' + details.request.requestId);
             }
         }else if (
             eventName === 'entriesClearedNotification' || 

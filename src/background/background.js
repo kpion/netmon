@@ -301,7 +301,7 @@ class Monitor{
 		//And so we'll need to do it async, by quering the tab. 
 		//And only then do the onWebRequest which will notify subscribers.
 		this.tabs.getOrQuery(details.tabId,tab => {
-			logger.log('...sending only now:', Date.now(), entry);
+			//logger.log('...sending only now:', Date.now(), entry);
 			entry.extra.tab.url = tab.url;
 			entry.extra.tab.title = tab.title;
 			
@@ -319,6 +319,7 @@ class Monitor{
 		this.addStat('Total requests ever reported',1);
 	}
 
+	//request headers.
 	onSendHeaders(details){
 		//logger.log('onSendHeaders',details);
 		//this isn't an ordinary tab, probably it's ourselves (-1) and so we don't want to pollute the lists.
@@ -332,7 +333,8 @@ class Monitor{
 			return;
 		}		
 		entry['request']['headers'] = details.requestHeaders;
-		this.onWebRequest('onSendHeaders',details);
+		//this.onWebRequest('onSendHeaders',details);
+		this.onWebRequest('onSendHeaders',entry);
 	}
 	/*
 	onHeadersReceived(details){
@@ -362,7 +364,8 @@ class Monitor{
 		entry.response = details;
 		entry.extra.time = entry.response.timeStamp - entry.request.timeStamp;
 
-		this.onWebRequest('onCompleted',details);
+		//this.onWebRequest('onCompleted',details);
+		this.onWebRequest('onCompleted',entry);
 	}
 
 	onErrorOccurred(details){
@@ -378,7 +381,8 @@ class Monitor{
 		}	
 		entry.response = details;
 		entry.extra.time = entry.response.timeStamp - entry.request.timeStamp;
-		this.onWebRequest('onErrorOccurred',details);
+		//this.onWebRequest('onErrorOccurred',details);
+		this.onWebRequest('onErrorOccurred',entry);
 	}
 
 	/**
