@@ -115,6 +115,7 @@ class Table{
                 }
                 if(column[2] === 'host'){
                     tdText = url.host;
+                    tdTitle = entry.request.url;
                 }
                 if(column[2] === 'pathNameSmart'){
                     tdTitle = entry.request.url;
@@ -125,6 +126,14 @@ class Table{
                     }
                     tdText = name.length > 0?name : url.host;
                 }
+
+                if(column[2] === 'tabTitle'){
+                    //title isn't guaranteed to contain anything. It's only there when domdocument is fully
+                    //loaded.
+                    tdText = entry.extra.tab.title ? entry.extra.tab.title : entry.extra.tab.url;
+                    tdTitle = entry.extra.tab.title + ' (' + entry.extra.tab.url + ')';
+                }
+                //['Tab','special','tabTitle','slim'],
             }else {//not a 'special' column
                 //for starters:
                 tdText = entry[column[1]][column[2]];

@@ -7,12 +7,38 @@ class EntryDetails{
         this.template = `
         `; 
     }
+
+    /**
+     * creates a new <a> element, doesn't add it anywhere
+     * params: <a href = <href> title = <title> target = <target>>text</a>
+     * target can be e.g. '_blank'
+     */
+    createLink (href, text = null, title = null, target = null){
+        if(text === null){
+            text = href;
+        }
+        let linkEl = document.createElement('a');
+        linkEl.setAttribute('href',href);
+        if(target){
+            linkEl.setAttribute('target',target);
+        }
+        if(title){
+            linkEl.setAttribute('title',title);
+        }
+        linkEl.textContent = text;
+        return linkEl;
+    }
+
     makeTitle(parent, title){
         let titleEl = document.createElement('h2');
         titleEl.textContent = title;
         parent.appendChild(titleEl);
     }
 
+    /**
+     * a new row like: <div><span>name</span><span>value</span></div>
+     * @param {string | Node}  value - can be either a simple string or an htmlelement
+     */
     makeRow(parent, name, val){
         const rowEl = document.createElement('div')
         rowEl.classList.add('row');
@@ -23,7 +49,11 @@ class EntryDetails{
 
         const valEl = document.createElement('span');
         valEl.classList.add('val');
-        valEl.textContent = val;
+        if(val instanceof Node){
+            valEl.appendChild(val);
+        }else{
+            valEl.textContent = val;
+        }
 
         rowEl.appendChild(nameEl);
         rowEl.appendChild(valEl);
@@ -49,19 +79,19 @@ class EntryDetails{
     }
 
     /**
-     * 
+     * Converts timestamp to hh:mm:ss
      * @param timestamp in miliseconds (not unix' seconds!)
      */
     formatTime(timestamp){
         var date = new Date(timestamp);
-        var hours = date.getHours();
+        var hours = "0" + date.getHours();
         // Minutes part from the timestamp
         var minutes = "0" + date.getMinutes();
         // Seconds part from the timestamp
         var seconds = "0" + date.getSeconds();
         
         // Will display time in 10:30:23 format
-        return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);        
+        return hours.substr(-2) + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);        
     }
 
     setEntry(entry){
@@ -73,20 +103,21 @@ class EntryDetails{
         
 
         this.makeTitle(this.container, 'General');
-      
-        this.makeRow(this.container,'Request URL', entry.request.url);
+        const urlLinkEl = this.createLink(entry.request.url,entry.request.url,null,'_blank');
+        this.makeRow(this.container,'Request URL', urlLinkEl);
         this.makeRow(this.container,'Request Method', entry.request.method);
         this.makeRow(this.container,'Status Code', entry.response.statusCode);
         if(entry.response.error){
             this.makeRow(this.container,'Error', entry.response.error);
         }
-        this.makeTitle(this.container, 'Response headers');
-        if(entry.response.headers){
-            this.headersSort(entry.response.headers);
-            entry.response.headers.forEach(element => {
-                this.makeRow(this.container, element.name, element.value);
-            });
+        this.makeRow(this.container,'Started', this.formatTime(entry.request.timeStamp));
+        let totalTime = '?';
+        if(entry.request.timeStamp && entry.response.timeStamp){
+            totalTime = (entry.response.timeStamp - entry.request.timeStamp).toFixed(2);
+            totalTime += ' ms';
         }
+        this.makeRow(this.container,'Total time', totalTime);
+
 
         this.makeTitle(this.container, 'Request headers');
         if(entry.request.headers){
@@ -95,11 +126,19 @@ class EntryDetails{
                 this.makeRow(this.container, element.name, element.value);
             });
         }                        
-        
+                
+
+        this.makeTitle(this.container, 'Response headers');
+        if(entry.response.headers){
+            this.headersSort(entry.response.headers);
+            entry.response.headers.forEach(element => {
+                this.makeRow(this.container, element.name, element.value);
+            });
+        }
+
         this.makeTitle(this.container, 'Other');
         this.makeRow(this.container,'Initiator', entry.request.initiator);
         this.makeRow(this.container,'From cache', entry.response.fromCache);
-        //this.makeRow(this.container,'Timestamp', this.formatTime(entry.response.timeStamp));
         
         if(typeof app !== 'undefined' && app.isDev()){
             this.makeTitle(this.container, 'Debugging info (dev mode only)');

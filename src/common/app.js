@@ -54,7 +54,23 @@ class Logger{
 class Entry{
 
 	constructor(){
-        //request and reponse come directly from browser, 'extra' is something this app fills.
-		this.request = this.response = this.extra = {};
+        //request and reponse come directly from browser
+        this.request = this.response = {};
+        //'extra' is something this app fills.
+        this.extra = {
+            
+            //*some* information from the tab making the request, at the time it is making it.
+            //mainly we have the .url here. Or at least should have, this isn't critically important
+            //for background.js to grab it.
+            tab: {},
+
+            //here we're just using request timestamp and response timestamp to calculate the difference.
+            //which basically should be a 'server reponse time' or rather 'download time'. 
+            //For some reason it is a bit different than what we see in dev tools -> network, 
+            //but this measurement can still be good when comparing to other requests' times reported 
+            //by this extension. It's just comparing it to other tools and methods might bring different 
+            //results.
+            time: null,
+        };
 	}	
 }

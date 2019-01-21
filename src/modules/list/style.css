@@ -95,6 +95,7 @@ body{
     display: block;
     white-space: nowrap;
     overflow:hidden;
+    text-overflow: ellipsis;
 }
 
 #entries-table tr:nth-child(even) {
@@ -132,6 +133,12 @@ Client error item, like 'blocked by client', applies to the whole tr element.
     /* width:55px; */
     width:55px;
 }
+
+#entries-table .col-tab-title{
+    /* width:55px; */
+    width:120px;
+}
+
 #entries-table .col-type{
     width:80px;
 }

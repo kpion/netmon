@@ -81,18 +81,26 @@ class List{
         this.ltable = l('#entries-table')
         //#entries-table - <table> declared in index.html
         this.table = new Table(this.ltable[0]);
-
-        this.table.setColumns([
+        const columns = [
             //display, request|reponse, key, css class (optional)
             ['ID','request','requestId','slim'],
             //['URL','request','url'],
-            ['Domain','special','host','url-domain'],
-            ['Name','special','pathNameSmart','url-name'],
+            ['Requested domain','special','host','url-domain'],
+            ['Requested name','special','pathNameSmart','url-name'],
             ['Method','request','method','slim'],
             ['Status','response','statusCode', 'slim'],
             ['Type','request','type','type'],
             // ['𝄙','special','showDetails', 'show-details']
-        ]);
+        ];
+        //specific stuff if in 'global' mode.
+        if(this.queryTab == 'all'){
+            //inserting another column
+            columns.splice(1, 0, 
+                ['Tab (initiator)','special','tabTitle','tab-title'],
+            );
+        }
+        this.table.setColumns(columns);
+
         this.table.make();
         //setting reference to our entries map
         //this.table.setEntries(this.entries);
@@ -154,7 +162,7 @@ class List{
         
         l('#clearTab, #clearAll').on('click',(ev)=>{
             let clearCriteria = ev.currentTarget.matches('#clearTab') ? criteria : {};
-            console.log('clear crits:',clearCriteria);
+            //console.log('clear crits:',clearCriteria);
             this.port.postMessage({
                 command:'clearEntries',
                 criteria: clearCriteria,
@@ -259,8 +267,13 @@ class List{
         //console.log('onSubscription:',eventName,eventName, details);
         if(eventName === 'onBeforeRequest'){
             const entry = new Entry();
-            entry.request = JSON.parse(JSON.stringify(details));
-            this.entries.set(details.requestId, entry);
+
+            //In contrast to the other on..., here in 'details' a whole entry is sent. 
+            //With request, empty reponse, some extras 
+            //this actually could be moved to a Entry constructor.
+            
+            Object.assign(entry,JSON.parse(JSON.stringify(details)));
+            this.entries.set(details.request.requestId, entry);
 
             if(this.matches(entry, this.getFilters())){
                 this.table.addRow(entry);
@@ -272,10 +285,14 @@ class List{
             }
         }else if (eventName === 'onCompleted' || eventName === 'onErrorOccurred'){
             const entry = this.entries.get(details.requestId);
-            entry.response = details;
-            this.table.updateRow(entry);
-            //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
-            this.updateStatus();
+            if(entry){
+                entry.response = details;
+                this.table.updateRow(entry);
+                //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
+                this.updateStatus();
+            }else{
+                logger.log('warning, no entry for ' + details.requestId);
+            }
         }else if (
             eventName === 'entriesClearedNotification' || 
             eventName === 'entriesAutoClearedNotification'
