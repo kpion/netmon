@@ -111,12 +111,8 @@ class EntryDetails{
             this.makeRow(this.container,'Error', entry.response.error);
         }
         this.makeRow(this.container,'Started', this.formatTime(entry.request.timeStamp));
-        let totalTime = '?';
-        if(entry.request.timeStamp && entry.response.timeStamp){
-            totalTime = (entry.response.timeStamp - entry.request.timeStamp).toFixed(2);
-            totalTime += ' ms';
-        }
-        this.makeRow(this.container,'Total time', totalTime);
+        this.makeRow(this.container,'Total time', 
+            entry.extra.time ? utils.formatTimeSpan(entry.extra.time) : '?');
 
 
         this.makeTitle(this.container, 'Request headers');

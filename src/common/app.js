@@ -58,12 +58,13 @@ class Entry{
         this.request = this.response = {};
         //'extra' is something this app fills.
         this.extra = {
-            
+
             //*some* information from the tab making the request, at the time it is making it.
             //mainly we have the .url here. Or at least should have, this isn't critically important
             //for background.js to grab it.
             tab: {},
 
+            //time in ms. 
             //here we're just using request timestamp and response timestamp to calculate the difference.
             //which basically should be a 'server reponse time' or rather 'download time'. 
             //For some reason it is a bit different than what we see in dev tools -> network, 

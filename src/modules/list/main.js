@@ -90,7 +90,7 @@ class List{
             ['Method','request','method','slim'],
             ['Status','response','statusCode', 'slim'],
             ['Type','request','type','type'],
-            // ['𝄙','special','showDetails', 'show-details']
+            ['Time','special','time','slim'],
         ];
         //specific stuff if in 'global' mode.
         if(this.queryTab == 'all'){
@@ -264,7 +264,7 @@ class List{
     //make any use of this fact.
     onSubscription(eventName, details){
         //this.logBkg ({eventName:eventName, details});
-        //console.log('onSubscription:',eventName,eventName, details);
+        logger.log('onSubscription:',Date.now(), eventName, details);
         if(eventName === 'onBeforeRequest'){
             const entry = new Entry();
 
@@ -274,10 +274,12 @@ class List{
             
             Object.assign(entry,JSON.parse(JSON.stringify(details)));
             this.entries.set(details.request.requestId, entry);
-
+            logger.log('onBeforeRequest',Date.now(), entry);
             if(this.matches(entry, this.getFilters())){
                 this.table.addRow(entry);
-            }            
+            }else{
+                logger.log('...but wasn\'t matching');
+            };            
         }else if (eventName === 'onSendHeaders'){
             const entry = this.entries.get(details.requestId);
             if(entry){
@@ -332,6 +334,15 @@ class List{
         }else{
             statusString = `${entriesVisible}/${entriesTotal} requests`;
         }
+        //ms
+        let totalTime = 0;
+        this.entriesVisible.forEach(entry => {
+            if(entry.extra.time){
+                totalTime += entry.extra.time;
+            }
+        });
+        totalTime = totalTime.toFixed(0);
+        statusString += ` | ${totalTime} ms`;
         this.lstatus.text(statusString);
     }
 

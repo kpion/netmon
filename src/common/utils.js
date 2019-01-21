@@ -47,5 +47,19 @@ utils = {
     	        break;
     	    }
         }
+    },
+
+    /**
+     * 
+     * @param {number} timeSpan miliseconds
+     */
+    formatTimeSpan(timeSpan, digits = 2){
+        if(timeSpan < 1000){
+            return timeSpan.toFixed(digits) + ' ms';
+        }else if(timeSpan < (1000 * 60)){
+            return (timeSpan / 1000).toFixed(digits) + ' s';
+        }else {
+            return (timeSpan / (1000 * 60)).toFixed(digits) + ' min';
+        };
     }
 };

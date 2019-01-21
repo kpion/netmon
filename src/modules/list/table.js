@@ -133,6 +133,13 @@ class Table{
                     tdText = entry.extra.tab.title ? entry.extra.tab.title : entry.extra.tab.url;
                     tdTitle = entry.extra.tab.title + ' (' + entry.extra.tab.url + ')';
                 }
+                if(column[2] === 'time'){
+                    let totalTime = '';
+                    if(entry.extra.time){
+                        tdText  = utils.formatTimeSpan(entry.extra.time,0);
+                        tdTitle = utils.formatTimeSpan(entry.extra.time,2);     
+                    }                    
+                }                
                 //['Tab','special','tabTitle','slim'],
             }else {//not a 'special' column
                 //for starters:

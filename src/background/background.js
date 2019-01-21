@@ -249,10 +249,24 @@ class Monitor{
 		logger.log('onWebNavigationCommitted: ', details);
 	}
 	*/
-	//On **all** the requests.
+
+	/** 
+	 * On **all** the requests.
+	 * @param {string} eventName e.g. 'onBeforeRequest
+	 * @param {Entry | Object} - i.e. the Entry instance or any other object
+	*/
 	onWebRequest(eventName, details){
 		//logger.log('on: ' +  eventName + ' : ' + (details.url || '') + ':',details);
-		this.notifySubscribers(details.tabId, eventName, details);
+		//if the event is onBeforeRequest (first event in the chain of given request) 
+		//then exceptionally details is a whole entry. Otherwise it's just request/response headers or other
+		//detail.
+		let tabId = null;
+		if(details instanceof Entry){
+			tabId = details.request.tabId;
+		}else{
+			tabId = details.tabId;
+		}
+		this.notifySubscribers(tabId, eventName, details);
 	}
 
 	/**
@@ -287,12 +301,14 @@ class Monitor{
 		//And so we'll need to do it async, by quering the tab. 
 		//And only then do the onWebRequest which will notify subscribers.
 		this.tabs.getOrQuery(details.tabId,tab => {
+			logger.log('...sending only now:', Date.now(), entry);
 			entry.extra.tab.url = tab.url;
 			entry.extra.tab.title = tab.title;
 			
 			//here, in contrast to the rest of the on... events, we send the *whole* entry, not only 
 			//'details' (btw - it used to be like this)
 			this.onWebRequest('onBeforeRequest',entry);
+			
 		})
 
 		//if this request is in currently active tab, we update the icon. 
@@ -304,16 +320,18 @@ class Monitor{
 	}
 
 	onSendHeaders(details){
+		//logger.log('onSendHeaders',details);
 		//this isn't an ordinary tab, probably it's ourselves (-1) and so we don't want to pollute the lists.
 		if(details.tabId <= 0){
 			return;
 		}
+		const entry = this.entries.get(details.requestId);
 		//might be that user did 'clear' while this request was still going on.
-		if(!this.entries.has(details.requestId)){
+		if(!entry){
 			logger.log('no entry for ' + details.requestId + ':',details);
 			return;
 		}		
-		this.entries.get(details.requestId)['request']['headers'] = details.requestHeaders;
+		entry['request']['headers'] = details.requestHeaders;
 		this.onWebRequest('onSendHeaders',details);
 	}
 	/*
@@ -326,10 +344,11 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
-		//const entry = 
+		const entry = this.entries.get(details.requestId);
+
 		//no such thing yet (or already) not sure why but this ... happens
 		//maybe it's a matter of deleting entries (clear) while there are still on going ones.
-		if(!this.entries.has(details.requestId)){
+		if(!entry){
 			logger.log('no entry for ' + details.requestId + ':',details);
 			return;
 		}			
@@ -340,8 +359,8 @@ class Monitor{
 		delete details['responseHeaders'];
 
 		//setting:
-		this.entries.get(details.requestId)['response'] = details;
-
+		entry.response = details;
+		entry.extra.time = entry.response.timeStamp - entry.request.timeStamp;
 
 		this.onWebRequest('onCompleted',details);
 	}
@@ -351,12 +370,14 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
+		const entry = this.entries.get(details.requestId);
 		//no such thing yet (or already), not sure why but this ... happens
-		if(!this.entries.has(details.requestId)){
+		if(!entry){
 			logger.log('no entry for ' + details.requestId + ':',details);
 			return;
 		}	
-		this.entries.get(details.requestId)['response'] = details;
+		entry.response = details;
+		entry.extra.time = entry.response.timeStamp - entry.request.timeStamp;
 		this.onWebRequest('onErrorOccurred',details);
 	}
 
@@ -410,7 +431,7 @@ class Monitor{
 			this.tabsubscribers[message.tabId] = {
 				port: port,
 			};*/
-			//logger.log('new subscriber, criteria: ' , message.criteria);
+			logger.log('new subscriber:', Date.now(), message.criteria);
 			this.subscribers.push({
 				port : port,
 				criteria: message.criteria, 
