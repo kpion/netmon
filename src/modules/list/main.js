@@ -35,16 +35,21 @@ class List{
         this.details = null;
 
         //element (lightdom)
-        this.lstatus = null;
+        this.lstats = null;
+
+        //if 'true' we'll not show the loader, because apparently we're done.
+        this.disableNextLoader = false;
     }
 
     initAndRun(){
 
         /**
-         * mode: taken from the url (?mode=xyz), 'popup' means we're started from browser action icon, hence showing only current tab requests,
-         * 'full' means we're in full mode (showing all the requests)
+         * mode: taken from the url (?mode=xyz), 'popup' means we're started from browser action icon, 
+         * hence showing only current tab requests,
+         * 'full' means we're in full mode (full window). We might show given specific tab OR global traffic.
          */
         var url = new URL(window.location.href);
+
         this.mode = url.searchParams.get("mode");
         if(this.mode == null){
             console.error('mode is not defined');
@@ -73,11 +78,11 @@ class List{
                 }
             }
             this.run();
-        });
+        });;
     }
 
     run(){
-        this.lstatus = l('#status');
+        this.lstats  = l('#stats');
         this.ltable = l('#entries-table')
         //#entries-table - <table> declared in index.html
         this.table = new Table(this.ltable[0]);
@@ -123,10 +128,10 @@ class List{
         // this.port.postMessage({
         //     command:'queryEntries',
         //     criteria: criteria,
-        //     callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
+        //     callbackData: {'action' : 'readEntries'},//we'll get this one when called back.
         // });
-        this.readAwaiting();
-
+        this.readEntries();
+        this.readExtraInfo();
         //subscribing for the next events (requests), which will probably come:
         this.port.postMessage({
             command:'subscribe',
@@ -137,27 +142,31 @@ class List{
 
         //buttons for clearing, closing, opening new netmon tools.
         
+        //global monitor vs specific tab monitor
         if(this.queryTab === 'all'){
-            l('#showFull').css('display','none');    
+            l('#showGlobal').css('display','none');    
             l('#clearTab').css('display','none'); 
+        }else{//specific tab
+            l('#clearAll').css('display','none'); 
         }
 
         //these are about 'full window' vs 'popup', not about reading a particular tab or not.
         if(this.mode === 'full'){
-            l('#showFull').css('display','none');  
             l('#popOut').css('display','none');  
         }
         if(this.mode === 'popup'){
             l('#clearAll').css('display','none');  
         }
 
-        l('#showFull').on('click',()=>{
+        l('#showGlobal').on('click',()=>{
             chrome.tabs.create({url:chrome.extension.getURL("modules/list/index.html?mode=full")}, function(tab) {
             });
+            window.close();
         })        
     
         l('#popOut').on('click',()=>{
             window.open(chrome.extension.getURL(`modules/list/index.html?mode=full&tab=${this.queryTab}`));
+            window.close();
         })          
         
         l('#clearTab, #clearAll').on('click',(ev)=>{
@@ -169,13 +178,79 @@ class List{
             });            
         });
 
-        //////////////////
-        //details dialog or div
+      
 
         //close button:    
         l('.modal .modal-btn-close, .modal .modal-btn-ok').on('click',(ev)=>{
             l(ev.target).closest('.modal').removeClass('modal-visible');
         })
+
+        //filtering
+        l('#filter-text').on('input',(ev) => {
+            this.updateTable();
+            this.updateStatus();
+        });
+
+        l('#filter-show-archived').on('change',(ev) => {
+            //this one requires full reread. p.s. this one will take care about updating as well.
+            this.readEntries();
+        });
+        
+        //play/pause (state) button 
+        l('#running').on('click',(ev)=>{
+            const lbutton = l(ev.target);
+            if(!lbutton.is('.pressed')){//in 'pause' mode, we enable playing
+                lbutton.text('⏸️️');
+                lbutton.addClass('pressed');
+                //rereading the data which might have came in the meantime
+                this.clearData();
+                this.readEntries();                
+            }else{//in 'playing' mode, we pause it.
+                lbutton.text('▶️');
+                lbutton.removeClass('pressed');
+            }
+            
+        });        
+        //block (state) button 
+        l('#blocking').on('click',(ev)=>{
+            const lbutton = l(ev.target);
+            if(!lbutton.is('.pressed')){//in non blocking mode (default), we'll start blocking
+                lbutton.addClass('pressed');
+                this.port.postMessage({
+                    command:'block',
+                    criteria: criteria,
+                });                  
+            }else{//in blocking mode, so we'll unblock it
+                lbutton.removeClass('pressed');
+                this.port.postMessage({
+                    command:'unblock',
+                    criteria: criteria,
+                });                 
+            }            
+        });
+        //tab info (e.g. color)
+        const lTabInfo = l('#tabinfo');
+        let tabInfoText = '';
+        let color = '';
+        if(this.queryTab === 'all'){
+            tabInfoText = 'Global scope';
+            color = 'rgb(0,0,0)';
+        }else{//we are tab specific
+            //tabInfoText = 'Tab: ' + this.queryTab;
+            tabInfoText = 'Tab scope';
+            color = utils.distinctColorFromNumber(parseInt(this.queryTab));
+        }
+        lTabInfo.text(tabInfoText);
+        lTabInfo.css ({
+            'border-left':`8px solid ${color}`,
+            'padding-left':'3px',
+        });
+        if(app.isDev()){
+            lTabInfo.attr('title',`[tabId: ${this.queryTab}]`);
+        }        
+
+        //////////////////
+        //details dialog or div        
 
         this.details = new EntryDetails(l('#modal-entry-details .content')[0]);
         const lTableBody =  l('#entries-table tbody');
@@ -194,30 +269,30 @@ class List{
             }
         })
 
-        //filtering
-        l('#filter #filter-text').on('input',(ev) => {
-            this.updateTable();
-            this.updateStatus();
-        });
     }
 
     /**
-     * getting requests made up until now. Used on initial start or on some ocassions, like notification
+     * getting all requests. Used on initial start or on some ocassions, like notification
      * from background.js about e.g. clearing log.
      */
-    readAwaiting(){
+    readEntries(){
         
         let criteria = {};
         if(this.queryTab !== 'all'){
             criteria.tabId = this.queryTab;
 
         }
-
+        if(l('#filter-show-archived')[0].checked){
+            //this will make background.js use the 'entries' rather than tabEntries, but filtered
+            //by tabId
+            criteria.useGlobal = true;
+        }
         //getting requests made up until now.
+        simplePerformance.mark('sending queryEntries msg');
         this.port.postMessage({
             command:'queryEntries',
             criteria: criteria,
-            callbackData: {'action' : 'initialQuery'},//we'll get this one when called back.
+            callbackData: {'action' : 'readEntries'},//we'll get this one when called back.
         });
     }
 
@@ -230,12 +305,42 @@ class List{
         this.table.remove(false,true);
     }
 
+    //stats, like internal one (this.stats) but also related to specific tab 
+    //(e.g. number of auto removed entries). This will eventually make run the this.updateExtraInfo()
+    readExtraInfo(){
+        let criteria = {};
+        if(this.queryTab !== 'all'){
+            criteria.tabId = this.queryTab;
+
+        }
+        this.port.postMessage({
+            command:'getExtra',
+            criteria: criteria,
+            //callbackData: {'action' : 'onReadExtraInfo'},//we'll get this one when called back.
+        });        
+    }
+
+    //inResponseTo === 'getStats') for example number of auto-removed entries.
+    updateExtraInfo(extras){
+        this.extraInfo = extras;
+        //are we actually blocking something? Just to make the icon look right
+        if(extras.tabExtra.blocking){
+            l('#blocking').addClass('pressed');
+        }
+        //to be continued.
+        //logger.log(extras);
+    }
+
     //message (callback) from our port (probably from background js in response to our 'command')
     onMessage(message){
         //console.log('onMessage:',message);
 
-        //callback in response to *our* initialQuery query
-        if(message.callbackData && message.callbackData.action == 'initialQuery' ){
+        //callback in response to *our* readEntries query
+        if(message.callbackData && message.callbackData.action === 'readEntries' ){
+            
+            simplePerformance.mark('received entries');
+            this.entries.clear();
+            this.entriesVisible.clear();
             //we need to convert an array to a map. This needs to be an array initially, because there are
             //some issues with chrome when sending a Map from background.js
             message.result.forEach(([k,v])=>{
@@ -244,13 +349,31 @@ class List{
                 this.entries.set(k,entry);
             });
             
+            simplePerformance.mark('built entries');
+            //>500 entries will take a few ms, so we'll show our 'loader'
+            if(this.entries.size > 500){
+                this.updateLoader(true,`loading ${this.entries.size} entries...`);
+            }
+            //timeout is there to allow a browser displaying a (possible) loader info. 
+            setTimeout(() => {
+                this.updateTable();
+                this.updateStatus();
+                simplePerformance.mark('updated table');
+                //logger.log(simplePerformance.getReport());
+                //do not show delayed loader 
+                //this.disableNextLoader=true;
+                this.updateLoader(false);        
+            }, 50);
+            
+            
+            
+            
+            simplePerformance.clearMarks();
 
-            //initial build, this will make the header (columns)
-            //then .updateTable will also add the rows. p.s. this.entries will *not* be stored 'for later' by `table`.
-            this.updateTable();
-            this.updateStatus();
         }
-
+        if(message.command === 'callback' && message.inResponseTo === 'getExtra'){
+            this.updateExtraInfo(message.result);
+        }
         //our 'subscription' callback from background js' monitor
         if(message.command === 'subscription'){
             this.onSubscription(message.eventName,message.details);
@@ -263,8 +386,8 @@ class List{
     //btw, this.table has a *reference* to this->entries, but here, when doing 'addRow' it doesn't
     //make any use of this fact.
     onSubscription(eventName, details){
-        //this.logBkg ({eventName:eventName, details});
-        logger.log('onSubscription:',Date.now(), eventName, details);
+        
+        //logger.log('onSubscription:',Date.now(), eventName, details);
         if(eventName === 'onBeforeRequest'){
             const entry = new Entry();
 
@@ -274,12 +397,10 @@ class List{
             
             Object.assign(entry,JSON.parse(JSON.stringify(details)));
             this.entries.set(details.request.requestId, entry);
-            logger.log('onBeforeRequest',Date.now(), entry);
-            if(this.matches(entry, this.getFilters())){
+            
+            if(this.isPlaying() && this.matches(entry, this.getFilters())){
                 this.table.addRow(entry);
-            }else{
-                logger.log('...but wasn\'t matching');
-            };            
+            }
         }else if (eventName === 'onSendHeaders'){
             const entry = this.entries.get(details.request.requestId);
             if(entry){
@@ -291,30 +412,32 @@ class List{
             if(entry){
                 //entry.response = details;
                 Object.assign(entry,JSON.parse(JSON.stringify(details)));
-                this.table.updateRow(entry);
-                //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
-                this.updateStatus();
+                if(this.isPlaying()){
+                    this.table.updateRow(entry);
+                    //regardless matching or not (because we might want to update 'y' in "x/y requests", i.e. total)
+                    this.updateStatus();
+                }
             }else{
                 logger.log('warning, no entry in list view for ' + details.request.requestId);
             }
         }else if (
             eventName === 'entriesClearedNotification' || 
             eventName === 'entriesAutoClearedNotification'
-            ){
+           ){
             //logger.log('cleared!: ', eventName);
             //user somewhere did a *manual* cleaning, we don't care here if it's us or not, we'll just reread.
-            this.clearData();
-            this.readAwaiting();
+            if(this.isPlaying()){
+                this.clearData();
+                this.readEntries();
+            }
         }                
-    }
-
-    addTableRow(entry){
-        const m = new Map();
     }
 
     /**
      * (Re)Updates *whole* table, based on our .entries AND filters.
-     * Used on initial startup and when filters change.
+     * Used on initial startup and when filters change. 
+     * However, when the 'archived' filter changes, we actually resend the whole 
+     * 'query' command to the background.
      */
     updateTable(){
         //removing table body rows:
@@ -343,9 +466,30 @@ class List{
                 totalTime += entry.extra.time;
             }
         });
-        totalTime = totalTime.toFixed(0);
-        statusString += ` | ${totalTime} ms`;
-        this.lstatus.text(statusString);
+        totalTime = utils.formatTimeSpan(totalTime,2);
+        statusString += ` | ${totalTime}`;
+        this.lstats.text(statusString);
+    }
+
+    /*
+    * show / hide loader (spinner, or just a word "loading....")
+    * @param {bool} show  
+    * */
+    updateLoader(show, text = null){
+        if(show && this.disableNextLoader){
+            this.disableNextLoader = false;
+            return;
+        }
+        const lloader = l('#loader');
+        lloader.css({'display':show?'block':'none'});
+        lloader.text(text?text:'');
+    }
+
+    /**
+     * true if the 'play' (running) button is pressed.
+     */
+    isPlaying(){
+        return l('#running').is('.pressed');
     }
 
     /**
@@ -360,7 +504,7 @@ class List{
             //in future versions here we'll have  maybe mimetype etc.
         }
 
-        filters.text = document.querySelector('#filter #filter-text').value;
+        filters.text = document.querySelector('#filter-text').value;
         filters.text = filters.text.trim();
 
         
@@ -442,3 +586,7 @@ const list = new List();
 l(function (){
     list.initAndRun();
 })
+
+function getMonitor(){
+    return monitor;
+}

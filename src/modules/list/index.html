@@ -3,6 +3,7 @@
   <head>
       <meta charset="UTF-8">
       <title>Netmon - requests</title>
+      <script src="../../common/simplePerformance.js"></script>
       <script src="../../common/utils.js"></script>
       <script src="../../lib/lightdom.js"></script>
       <script src="../../common/app.js"></script>
@@ -18,24 +19,51 @@
   
   <body>
     <div id = 'toolbar' class = 'bar'>
-      <span id = 'filter'>
-        <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
-      </span> 
+        <div class = 'bar-left'>
+          <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>🗑</button>
+
+
+          <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>🗑</button>
+
+          <button  id = 'running' class = 'button pressed' title = 'Play / Pause'>⏸️️</button>
+
+          <button  id = 'blocking' class = 'button' title = 'Block requests from this tab'>️✋</button>
+          
+          <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
+
+          <label title = 'Show all the requests for this tab, including previous navigations'>
+            <input type = 'checkbox' id = 'filter-show-archived'> archived
+          </label>
+        </div>
+
+        <div class = 'bar-right'>
+          <button  id = 'popOut' class = 'button' title = 'To full window'>🗔</button>
+          <button  id = 'showGlobal' class = 'button' title = 'Global monitor'>🌍</button>
+          <!--
+          <span>🗑⏸️️️✋🗔🌍⏵/▶️⏸⏸️️️</span>
+          -->
+        </div>
+        
     </div>
+
+    <!-- usually hidden, unless there is a lot of job to do (loading entries)-->
+    <div id = 'loader'></div>
 
     <table id = 'entries-table' class="entries-table" >
       <thead></thead>
       <tbody></tbody>
     </table> 
-    <div id = 'status' class = 'bar'></div>
-
-    <div id = 'buttons-bar' class = 'bar'>
-      <button  id = 'popOut' class = 'pure-button' title = 'Pop-out this tab'>Pop-out</button>
-      <button  id = 'clearTab' class = 'pure-button' title = 'Clear this tab traffic'>Clear</button>
-
-      <button  id = 'showFull' class = 'pure-button' title = 'Show all tabs traffic'>Global monitor</button>
-      <button  id = 'clearAll' class = 'pure-button'>Clear everything (all tabs)</button>
+    
+    <div id = 'statusbar' class = 'bar'>
+        <div class = 'bar-left'>
+          <span id = 'stats'></span>
+        </div>
+        <div class = 'bar-right'>
+          <!-- currently monitored tab info (or global) -->
+          <span id = 'tabinfo'></span>      
+        </div>
     </div>
+
 
     <div class = 'modal' id = 'modal-entry-details'>
       <label class = 'modal-btn-close'>✕</label>

@@ -61,5 +61,47 @@ utils = {
         }else {
             return (timeSpan / (1000 * 60)).toFixed(digits) + ' min';
         };
+    },
+
+    /**
+     * adds ... to a string if longe than 'maxLen'
+     */
+    ellipsis (string, maxLen){
+        if (string.length >= maxLen)
+           return string.substring(0,maxLen-1)+'...';
+        else
+           return string;
+     },    
+
+    //see  colorFromNumber
+    rgbFromNumber(num){
+        return {
+                'r' : Math.abs(num % 255),
+                'g' : Math.abs((num % 255) * 40) % 255,
+                'b' : Math.abs((num % 255) * 80) % 255,
+            };
+    },
+
+    /**
+     * will try to 'make' a color based on arbitrary number (from 0 to ... whatever).
+     * used e.g. to colorize tab IDs in such a way, that tab 1001 will differt greatly (in color) from 10002;
+     * @return {string} e.g. rgb(10,20,300);
+     */
+    colorFromNumber(num){
+        const c = this.rgbFromNumber(num);
+        return `rgb(${c.r},${c.g},${c.b})`;
+    },  
+
+    //used by distinctColorFromNumber, taken from: https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
+    distinctColors : [
+        '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', 
+        '#bfef45', '#fabebe', '#469990', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', 
+        '#808000', '#ffd8b1', '#000075', '#a9a9a9', '#ffffff', '#000000'],
+    /**
+     * returns a 'distinct' color from a number, used e.g. to colorize tabId's which can be any number
+     * from 0 to ... a lot of. 
+     * */    
+    distinctColorFromNumber(num){
+        return this.distinctColors[num % this.distinctColors.length];
     }
 };

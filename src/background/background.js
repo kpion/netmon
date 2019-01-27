@@ -10,6 +10,9 @@ class Monitor{
 		//only for information purposes. Timestamp in ms.
 		this.startTime = Date.now();
 
+		//to get a name or something
+		this.extensionManifest = chrome.runtime.getManifest();
+
 		//statsKeys - debug / reporting thing only.
 		//*some* of the keys used in this.stats (used by this.addStat) Just those repeating or... something.
 		//this object has 'our' internal name, used in this.addStat, and 'real' name which later 
@@ -40,10 +43,16 @@ class Monitor{
 		//this one servers only some non-very-important information about e.g. tab title, url etc.
 		this.tabs = new Tabs();
 
+		//Indexed under tabId, some additional stuff per tab, *our* stuff, e.g. by Monitor. 
+		//Like e.g. number of removed entries in a particular tab, so we can display it for a user.
+		//or 'block' status.
+		//not stored in the above this.tabs because it's not the Tabs class responsibility.
+		this.tabsExtras = {};
+
 		//internal log, for debugging and stuff. Consists of objects with 
 		//{ message: and data: }
-		//use this.addInternalLog();
-		this.log = [];
+		//use this.log();
+		this.logs = [];
 
 		//statistics, mostly for internal (debugging) stuff, like 'total times' spent on something.
 		//use this.addStat('key',numberToAdd);
@@ -75,8 +84,8 @@ class Monitor{
 		//////////////////////////////////
 		//requests, in the order of appearance
 		chrome.webRequest.onBeforeRequest.addListener(
-			(details) => {this.onBeforeRequest(details)}, 
-			filter,["requestBody"]);
+			(details) => {return this.onBeforeRequest(details)}, 
+			filter,["requestBody","blocking"]);
 
 		//it seems we need this one as well, even if we have onBeforeRequest, because
 		//onBeforeRequest does not accept requestHeaders as an extra option, and this one - onSendHeaders
@@ -144,7 +153,7 @@ class Monitor{
 						if(subscriber.criteria && subscriber.criteria.tabId){
 							dbgTabId = subscriber.criteria.tabId;
 						}
-						logger.log('subscriber removed, tabId: ' + dbgTabId);
+						//logger.log('subscriber removed, tabId: ' + dbgTabId);
 						//break;
 					}
 				}
@@ -184,9 +193,18 @@ class Monitor{
 			});
 		}		
 		const tab = this.tabs.get(tabId);	
+		const tabExtra = this.getTabExtra(tabId);
+
 		let badgeText = '0';
+		//title as displayed on mouse hover over the icon.
+		let titleText = this.extensionManifest.name;
+		if(tabExtra.blocking){
+			titleText += ' (blocking) ';
+		}
 		if(this.tabEntries.has(tabId)){
+			const theTabEntries = this.tabEntries.get(tabId);
 			if(this.tabs.isOur(tabId)){
+				//is this extension's tab?
 				//badgeText = this.entries.size;
 				badgeText = '';//ehhh, for consistency with situation below.
 			}else if (!tab || !tab.url){
@@ -194,10 +212,26 @@ class Monitor{
 				//just now. Sometimes this happens, randomly
 				badgeText = '';
 			}else{
-				badgeText = this.tabEntries.get(tabId).size;
+				//'normal' situation
+				badgeText = theTabEntries.size;
+				if(theTabEntries.size > 0){
+					const lastEntry = Array.from(theTabEntries)[theTabEntries.size - 1][1];
+					const tabInfo = app.isDev()?` [from tab ${tabId}]`:'';
+					titleText += ` - ${theTabEntries.size} requests${tabInfo}. Most recent one: ` + utils.ellipsis(lastEntry.request.url,200); 
+				}
 			}
 		}
 		chrome.browserAction.setBadgeText({ text: badgeText.toString() });
+		if(!tabExtra.blocking){//NOT blocking
+			chrome.browserAction.setBadgeBackgroundColor({color: '#626262'});
+		}else{//Blocking
+			chrome.browserAction.setBadgeBackgroundColor({color: '#b04242'});
+		}
+		//chrome.browserAction.setBadgeTextColor({color: '#fff'});//no such thing in chrome. Only fx.
+
+		chrome.browserAction.setTitle({title: titleText});
+		
+		
 		// if (timesCurrentlyDoing > 0) {
 		// 	chrome.browserAction.setIcon({ path: 'static/on.gif' });
 		// } else {
@@ -208,8 +242,10 @@ class Monitor{
 	 * onWebNavigationStart
 	 * started when user refreshes an existing tab in any way or
 	 * creates a new tab (with ctrl+t or ctrl+link click)
+	 * we want to remove 'old' entries from this.tabEntries but *not* from entries, so they 
+	 * can still be actually available if needed.
 	 * separately for every f... iframe. when frameId it's the main one.
-	 * @todo - this should be configurable ('persistent' checkbox somewhere)
+	 * @todo - this should be configurable ('persistent' checkbox somewhere, or maybe not)
 	 * 
 	 * @param {object} details: {
 	 * 	tabId: integer, 
@@ -280,8 +316,13 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
+		const tabExtra = this.getTabExtra(details.tabId);
+
 		const entry = new Entry();
 		entry.request = details;
+		if(tabExtra.blocking){
+			entry.extra.blocked = true;
+		}
 		this.entries.set(details.requestId,entry);
 		
 		//and... *independly*, tabEntries.
@@ -317,6 +358,11 @@ class Monitor{
 		}
 
 		this.addStat('Total requests ever reported',1);
+		
+		if(tabExtra.blocking === true){
+			this.addStat('Total requests blocked',1);
+			return {"cancel": true};
+		}
 	}
 
 	//request headers.
@@ -391,8 +437,11 @@ class Monitor{
 	 * 	if null, *all* entries are returned keyed by 'request_id'.
 	 *  otherwise: 
 	 *  criteria { 
-	 *    tabId : if not null, only the entries for given tabId are returned as a Map(!)
-	 *    requestId : if not null, only the entries for given requestId are return (no problem there is both above are defined)
+	 *    	tabId : if not null, only the entries for given tabId are returned as a Map(!)
+	 *    	requestId : if not null, only the entries for given requestId are return 
+	 * 			(no problem there is both above are defined)
+	 * 		useGlobal: if true, the global this.entries will be used. Along with tabId this 
+	 * 			will also give 'archived' entries for given tab
 	 *  }
 	 * 
 	 */
@@ -400,19 +449,33 @@ class Monitor{
 		if(criteria == null || Object.keys(criteria).length === 0){
 			return this.entries;
 		}
-		
+
+		//this is a weird scenario - we should use 'global' this.entries but no tabId given
+		//in result we also will return everything this.entries.
+		if(criteria && criteria.useGlobal && !criteria.tabId){
+			return this.entries;
+		}
 		//first phase src entries:
-		let srcEntries = null;//one object or map
+		let srcEntries = null;//usually map, unless nothing found then an empty object {}
 		if(typeof criteria.tabId !== 'undefined'){
 			//is tabId valid integer?
 			console.assert(parseInt(criteria.tabId) == criteria.tabId);
-			srcEntries = this.tabEntries.get(parseInt(criteria.tabId));
+
+			//do we want 'all' or 'current' i.e. after most recent onWebNavigationStart, from given tab?
+			
+			if(criteria.useGlobal){
+				//we want all for given tab
+				srcEntries = this.getGlobalEntriesByTabId(criteria.tabId);
+			}else{
+				//we want only 'current'
+				srcEntries = this.tabEntries.get(parseInt(criteria.tabId));
+			}
 		};
 		
-		//even if both are defined, that is fine
+		//even if both (requestId and tabId) are defined, that is fine, because given requestId
+		//series can belong to only one tab anyway. 
 		if(typeof criteria.requestId !== 'undefined'){
 			srcEntries = this.entries.get(criteria.requestId);
-			logger.log('reading by requestId: ' + criteria.requestId);
 		};
 
 		if(typeof srcEntries === 'undefined'){
@@ -422,6 +485,16 @@ class Monitor{
 
 	}
 
+	getGlobalEntriesByTabId(tabId){
+		const resultMap = new Map();
+		this.entries.forEach((entry,requestId) => {
+			//we use == not === because actually tabId isn't guaranteed to be int.
+			if(entry.request && entry.request.tabId == tabId){
+				resultMap.set(requestId,entry);
+			}
+		})
+		return resultMap;
+	}
 	/**
 	 * One time message from our communication port, probably a command like a query or something.
 	 * setup in this.run
@@ -435,7 +508,7 @@ class Monitor{
 			this.tabsubscribers[message.tabId] = {
 				port: port,
 			};*/
-			logger.log('new subscriber:', Date.now(), message.criteria);
+			//logger.log('new subscriber:', Date.now(), message.criteria);
 			this.subscribers.push({
 				port : port,
 				criteria: message.criteria, 
@@ -460,7 +533,25 @@ class Monitor{
 				errorCode: 0
 			});
 		}
+		//stats, like internal one (this.stats) but also related to specific tab 
+		//(e.g. number of auto removed entries, is blocking or not)
+		if (message.command === "getExtra"){
+			//let entries = this.query(message.criteria || {});
+			const result = {};
+			result.internalStats = this.getStats();
+			result.tabExtra = {};
+			if(message.criteria && message.criteria.tabId){
+				result.tabExtra = this.getTabExtra(message.criteria.tabId);
+			}
+			port.postMessage({
+				command: 'callback', 
+				callbackData: typeof message.callbackData == 'undefined'? {} : message.callbackData,
+				inResponseTo: message.command,
 
+				result: result, 
+				errorCode: 0
+			});
+		}
 		//'clear' button (or clear all)
 		if (message.command === 'clearEntries'){
 			//for stats
@@ -491,6 +582,26 @@ class Monitor{
 			this.addStat('Entries removed by user ("clear" buttons)',removedCount)
 			this.addStat(this.statsKeys.totalEntriesRemoved, removedCount);
 		}
+
+		//blocking requests
+		if (message.command === 'block'){
+			//are we supposed to block only specifi tab?
+			if(message.criteria && message.criteria.tabId)	{
+				this.getTabExtra(message.criteria.tabId).blocking = true;
+				this.updateBrowserActionIcon(message.criteria.tabId);//just to reflect this
+				logger.log('blocking ' + message.criteria.tabId);
+			}
+		}
+		//unblocking requests
+		if (message.command === 'unblock'){
+			//are we supposed to unblock only specifi tab?
+			if(message.criteria && message.criteria.tabId)	{
+				this.getTabExtra(message.criteria.tabId).blocking = false;
+				this.updateBrowserActionIcon(message.criteria.tabId);//just to reflect this
+				logger.log('unblocking ' + message.criteria.tabId);
+				
+			}
+		}		
 	}
 
 	/**
@@ -541,25 +652,44 @@ class Monitor{
 	}
 
 	/**
-	 * Removes given whole tab from both this.tabEntries and matching entries in this.entries 
+	 * Removes given whole tab from both this.tabEntries and entries in this.entries matching given tabId
 	 * Used when a command is send "clearEntries" specific to given tab or when autoclearing old closed tabs.
 	 * @return int  - number of entries removed.
 	 */
 	removeTabEntries(tabId){
-		const theTabEntries = this.tabEntries.get(tabId);
-		if(typeof theTabEntries === 'undefined'){//shouldn't happen
-			return 0;
+		//only for informational purposes:
+		let count = 0;
+		//easy - removing from tabEntries
+		if(this.tabEntries.has(tabId)){
+			count += this.tabEntries.get(tabId).size;
+			this.tabEntries.delete(tabId);
 		}
-		const count = theTabEntries.size;
-		//removing matchi entres using 'key' (which is request id here)
-		theTabEntries.forEach((entry,key) => {
-			this.entries.delete(key);
-		})
-		//removing the tab
-		this.tabEntries.delete(tabId);
+		//harder - we need to find all the matching entries in this.entries.
+		//previously we used to take that info (what to delete) from tabEntries but that wasn't sufficient
+		//because for many reasons this information might not be up to date.
+		this.entries.forEach((entry,requestId) => {
+			if(entry.request && entry.request.tabId === tabId){
+				this.entries.delete(requestId);
+				count++;
+			}
+		})		
 		return count;
 	};
 
+	/**
+	 * Using this.tabExtras returns a matching tab info or (if missing) creates and returns it.
+	 * @param {*} tabId 
+	 */
+	getTabExtra(tabId){
+		if(tabId in this.tabsExtras){
+			return this.tabsExtras[tabId];
+		}
+		//there can be more than this, it's dynamic
+		this.tabsExtras[tabId] = {
+			autoRemovedEntriesCount : 0,
+		}
+		return this.tabsExtras[tabId];
+	}
 	/**
 	 * Part of auto clearing. Used in this.autoClear which is called periodically
 	 * @param {int} maxEntriesPerTab - max entries per tab, if found a bigger one, then removing is done.
@@ -588,6 +718,9 @@ class Monitor{
 				this.addStat('Clearing oversized tabs: removed entries', removeCount);
 				//we use this.statsKeys... because this particular key is used more than once:
 				this.addStat(this.statsKeys.totalEntriesRemoved, removeCount);
+				//some extra info per tab
+				const tabExtra = this.getTabExtra(tabId);
+				tabExtra.autoRemovedEntriesCount += removeCount;
 				clearedTabs.push(tabId); 		
 			}
 		})
@@ -621,8 +754,8 @@ class Monitor{
 						this.addStat('Clearing closed tabs: removed entries', theTabEntriesSize);
 						this.addStat('Clearing closed tabs: removed tabs', 1);
 						//we use this.statsKeys... because this particular key is used more than once:
-						this.addStat(this.statsKeys.totalEntriesRemoved, theTabEntriesSize);
 
+						this.addStat(this.statsKeys.totalEntriesRemoved, theTabEntriesSize);
 						clearedTabs.push(tabId); 	
 					}
 				}
@@ -665,7 +798,9 @@ class Monitor{
 		if(clearedTabs.length > 0){
 			//send notification to the affected tabs:
 			this.notifySubscribers(clearedTabs,'entriesAutoClearedNotification');
-			
+			//this action could affect current tab stats, which we do display as browser action badge text.
+			this.updateBrowserActionIcon();
+			this.log(`autoClear: done clearOversizedTabs (${clearedTabs.length}) tabs cleaned`);
 		}
 
 		//when to consider a tab a candidate for a complete deletion. In in minutes since the last
@@ -676,6 +811,7 @@ class Monitor{
 		if(clearedClosedTabs.length > 0){
 			//send notification to the affected tabs:
 			this.notifySubscribers(clearedClosedTabs,'entriesAutoClearedNotification');
+			this.log(`autoClear: done clearClosedTabs (${clearedClosedTabs.length}) tabs cleaned`);
 		}
 
 		//if for any reason the main tab-agnostic this.entries map also have a ridiculously large number of 
@@ -684,8 +820,9 @@ class Monitor{
 		if(this.clearRidiculouslyHighNumberOfGlobalEntries(limitGlobal)){
 			//send notification to all the tabs:
 			this.notifySubscribers(null,'entriesAutoClearedNotification');
+			this.log(`autoClear: done clearRidiculouslyHighNumberOfGlobalEntries`);
 		}
-
+		
 		this.addStat('Auto clearing: total time spent (ms)', performance.now() - startTime);
 	};
 
@@ -704,8 +841,9 @@ class Monitor{
 				data: data,
 			};
 		}
-		logger.log('internal log:', log);
-		this.log.push(log);
+		log.timeStamp = Date.now();
+		//logger.log('internal log:', log);
+		this.logs.push(log);
 	}
 
 	/**
@@ -724,16 +862,16 @@ class Monitor{
 	 */
 	getStats(){
 		const result = this.stats;
-		result['current_entries'] = this.entries.size;
-		result['current_tabs_in_tab_entries'] = this.tabEntries.size;
-		result['current_entries_in_tab_entries'] = Array.from(this.tabEntries).
+		result['Currently: entries'] = this.entries.size;
+		result['Currently: tabs in tab entries'] = this.tabEntries.size;
+		result['Currently: entries in tab entries'] = Array.from(this.tabEntries).
 			reduce((acc,item) => {
 				return acc + item[1].size;
 			},0);
-		result['current_active_tabs'] = Object.keys(this.tabs.tabs).length;
-		result['current_subscribers'] = this.subscribers.length;
+		result['Currently: active tabs'] = Object.keys(this.tabs.tabs).length;
+		result['Currently: subscribers'] = this.subscribers.length;
 		//total time since we started, *not* "time spent on processing"
-		result['minutes_since_start'] = (Date.now() - this.startTime) / 1000 / 60;
+		result['Currently: minutes since start'] = (Date.now() - this.startTime) / 1000 / 60;
 		return result;
 	}
 }

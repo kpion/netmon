@@ -72,6 +72,9 @@ class Entry{
             //by this extension. It's just comparing it to other tools and methods might bring different 
             //results.
             time: null,
+
+            //did *we* (the extension) block this request. 
+            blocked: false,
         };
 	}	
 }

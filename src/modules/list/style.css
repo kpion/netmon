@@ -16,7 +16,8 @@ body{
 
 :root{
     --dlg-width:500px;/* modal dialog */
-    --bar-height:24px;/* every single one of: toolbar, status bar, bottom-bar - will have exactly this height */
+    --toolbar-height:36px;
+    --statusbar-height:26px;
 }
 
 
@@ -36,11 +37,8 @@ body{
         width:100%;
     }
 }
-/*  toolbar, status bar, bottom-bar  */
-.bar{
-    height: var(--bar-height);
-    overflow:hidden;
-}
+
+
 /* most if these things exist to have fixed header position */
 
 #entries-table{
@@ -48,8 +46,9 @@ body{
     background-color: #fff;
     cursor: default ; 
 
-    height:calc(100% - var(--bar-height) * 3 - 1px);
+    height:calc(100% - var(--toolbar-height) - var(--statusbar-height) - 1px);
     display:block;
+    overflow:hidden;
 }
 
 
@@ -67,6 +66,8 @@ body{
     table-layout: fixed;
     display: block;
     overflow: auto;
+    overflow-y: scroll;
+
     /* height: 200px;  */
     height:calc(100% - 21px);/*assuming thead has this number of pixels in height */
 }
@@ -111,6 +112,14 @@ body{
     /* background-image: linear-gradient(0deg, rgba(0,0,255,0.1) 0%, rgba(0,0,255,0.1) 100%); */
 }
 
+/*
+the row represents the key (main) request, which ususally is a *page* opened just after navigating
+to some url.
+*/
+#entries-table  tr.item-main-frame{
+    /* font-weight: bold; */
+    background-color:#d1d6e5;
+}
 
 /*
 Server error item, like 404. Applies to the whole tr
@@ -152,9 +161,96 @@ Client error item, like 'blocked by client', applies to the whole tr element.
     width:40%;
 }
 
+/*
+-------------------------------------------------------------------------------
+bars, toolbar, status bar,
+-------------------------------------------------------------------------------
+*/
 
+.bar{
+    overflow:hidden;
+    display: flex;
+    align-items: center;    
+}
+.bar .bar-left{
+    flex:auto;
+}
+.bar .bar-right{
+    padding-right:10px;
+}
 
+/* label and checkboxes - without it they seem misaligned  */
+.bar label input{
+    position:relative;
+    top:3px;
+}
 
+/*
+-------------------------------------------------------------------------------
+toolbar
+-------------------------------------------------------------------------------
+*/
+
+#toolbar {
+    padding:5px 3px 5px 3px;
+    height: var(--toolbar-height);
+}
+
+#toolbar #toolbar-right{
+    /* float:right;
+    margin-right:20px; */
+}
+
+/*eg. text filter*/
+#toolbar input[type='text']{
+    height:26px;
+    padding-left:3px;
+}
+
+#toolbar .button{
+    /* position:relative;
+    top:2px; */
+
+    font-size:120%;
+    border:none;
+    background-color:inherit; 
+    opacity:0.7;
+    min-width:26px;
+}
+
+#toolbar .button:hover{
+    /* background-image: linear-gradient(transparent,rgba(0,0,0,.05) 40%,rgba(0,0,0,.1)); */
+    opacity: 1;
+}
+
+#toolbar .button:focus{
+    border:none;
+    outline:none;
+}
+
+#toolbar .button.pressed{
+    /* border:1px solid #ccc; */
+    /* background-image: linear-gradient(transparent,rgba(0,0,0,.05) 40%,rgba(0,0,0,.1));  */
+    color:#0cf;
+}
+
+/* svg */
+.fa-icon{
+	width:1em;
+	height:1em;
+	vertical-align: top;/*this isn't strictly necesssary*/
+}
+/*
+those icons/unicode symbols need to be manually lowered.
+*/
+.button#clearTab, .button#clearAll, .button#popOut{
+    position:relative;
+    top:2px; 
+}
+
+#toolbar #tabinfo {
+    margin-left:3px;    
+}
 
 /*
 -------------------------------------------------------------------------------
@@ -162,14 +258,12 @@ status bar
 -------------------------------------------------------------------------------
 */
 
-#status{
+#statusbar{
     padding:3px;
     border:1px solid #ccc;
     border-right:none;
     border-left:none;
 }
-
-
 
 /*
 -------------------------------------------------------------------------------
@@ -275,3 +369,29 @@ modal dialog
 .entry-details .row .value {
     
 }
+
+/*
+-------------------------------------------------------------------------------
+other elements
+-------------------------------------------------------------------------------
+*/
+
+#loader{
+    display: none;
+    position:absolute;
+    top:45%; 
+    left:45%;
+    font-size:80%;
+    color:#555;
+    background-color:white;
+    /* border:1px solid #bbb; */
+    padding:5px;
+    opacity:0.8;
+
+}
+
+/*
+-------------------------------------------------------------------------------
+just some common stuff
+-------------------------------------------------------------------------------
+*/

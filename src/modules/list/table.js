@@ -96,7 +96,7 @@ class Table{
         const _td = document.createElement('td');   
         const _span = document.createElement('span');
         const url = new URL(entry.request.url);
-        let trClass = '';//might be something in case of statusCode == 404 etc.
+        let trClass = [];//might be something in case of statusCode == 404 etc.
         //console.log(entry,JSON.stringify(entry,null,' '));
         for (var colIndex in this.columns){ 
             //whole line like ['Type','request','type','type']
@@ -106,12 +106,16 @@ class Table{
             const span = _span.cloneNode(false);
 
             let tdText = '';
-            let tdClass = '';
+            let tdClass = [];
+            let tdStyle = '';//this one is used only when coloring 'tab info' cell
             let tdTitle = '';
+            if(column[3]){//css class
+                tdClass.push('col-' + column[3]);
+            }              
             if(column[1] === 'special'){//we must handle this manually
                 if(column[2] === 'showDetails'){
                     tdText = '𝄙';
-                    tdClass = 'showDetails';
+                    tdClass.push ('showDetails');
                 }
                 if(column[2] === 'host'){
                     tdText = url.host;
@@ -132,6 +136,12 @@ class Table{
                     //loaded.
                     tdText = entry.extra.tab.title ? entry.extra.tab.title : entry.extra.tab.url;
                     tdTitle = entry.extra.tab.title + ' (' + entry.extra.tab.url + ')';
+                    //border color:
+                    const color = utils.distinctColorFromNumber(entry.request.tabId);
+                    tdStyle = `border-left:3px solid ${color};`;
+                    if(app.isDev()){
+                        tdTitle += ` [tabId: ${entry.request.tabId}]`;
+                    }
                 }
                 if(column[2] === 'time'){
                     let totalTime = '';
@@ -149,63 +159,67 @@ class Table{
                         tdText = 'xhr';
                     }
                 } else if (column[2] === 'statusCode'){
-
-                    if(typeof tdText !== 'undefined'){
-                        const statusCodeInt = parseInt(tdText);  
-                        if(statusCodeInt >= 200 && statusCodeInt <= 299){
-                            //OK
-                        }else if(statusCodeInt >= 300 && statusCodeInt <= 399){    
-                            //Redirection
-                        }else{
-                            //Error
-                            trClass = 'item-server-error';
-                        }
-                    }
-
                     if(typeof tdText == 'undefined' || tdText == ''){
                         tdText = 'waiting...';
                         if(entry.response && entry.response.error){
                             tdText = 'error';//initially
                             /*
-                            //maybe a @todo - this one appears when ublock blocks, but only then? Besides in FX
-                            //it's a different message. 
+                            //@todo: just maybe : this one appears when ublock blocks, but only then? 
+                            //Besides in FX it's a different message. 
                             if(entry.response.error === 'net::ERR_BLOCKED_BY_CLIENT'){
                                 tdText = 'blocked';
                             }*/
+                            if(entry.extra.blocked){//this means *we* (the extension) blocked it.
+                                tdText = 'blocked';
+                            }
                             tdTitle = entry.response.error;//e.g. net::ERR_BLOCKED_BY_CLIENT when blocked by ublock or adblock
-                            trClass = 'item-client-error';
+                            
                         }
                     }
                 }
             }
-            /*
-            //this actually happened only once, maybe in the future this should be uncommented.
-            if(tdText == '' || typeof tdText == 'undefined'){
-                
-                if(column[2] === 'statusCode' && entry.response.error){//this happened to me once....
-                    tdText = entry.response.error;
-                }else{
-                    tdText = '?';
+            if(entry.request && entry.request.type === 'main_frame' && entry.request.frameId == 0){
+                trClass.push('item-main-frame');
+            }
+            //styling tr (e.g. based on statusCode, this doesn't depend on columns being displayed) 
+            if(entry.response){
+                //it is possible that even when 'response' is there, the statusCode is not. This happens
+                //when there is response.error (handled further below)
+                if(entry.response.statusCode){
+                    const statusCodeInt = parseInt(entry.response.statusCode);  
+                    if(statusCodeInt >= 200 && statusCodeInt <= 299){
+                        //OK
+                    }else if(statusCodeInt >= 300 && statusCodeInt <= 399){    
+                        //Redirection
+                    }else{
+                        //Error
+                        trClass.push('item-server-error');
+                    }   
+                }
+                if(entry.response.error){
+                    //client (e.g. via some ad blocker) blocked or something else
+                    trClass.push('item-client-error');
                 }
             }
-            */
-         
-            //td.textContent = tdText;
+
+            //ok, lets build it.
             span.textContent = tdText;
-            if(tdClass){
-                td.classList.add(tdClass);
+            if(tdClass.length > 0){
+                td.classList.add(...tdClass);
+            }
+            if(tdStyle != ''){
+                td.style.cssText = tdStyle;
             }
             if(tdTitle){
                 td.setAttribute('title',tdTitle);
             }
-            if(column[3]){//css class
-                td.classList.add('col-' + column[3]);
-            }              
+            
             td.appendChild(span);
             tr.appendChild(td);  
           }   
-        if(trClass){
-            tr.classList.add(trClass);  
+
+        if(trClass.length > 0){
+            tr.classList.add(...trClass);  
         }
         return tr;
     }
