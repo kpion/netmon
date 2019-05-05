@@ -20,13 +20,18 @@
   <body>
     <div id = 'toolbar' class = 'bar'>
         <div class = 'bar-left'>
-          <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>🗑</button>
+          <!-- <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>🗑</button> -->
 
+          <button  id = 'clearTab' class = 'button' >
+            <svg class = 'fa-icon' title = 'Clear this tab traffic'>
+              <use xlink:href="../../static/font-awesome/sprites/regular.svg#trash-alt"></use>
+            </svg> 
+          </button>
 
           <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>🗑</button>
 
           <button  id = 'running' class = 'button pressed' title = 'Play / Pause'>⏸️️</button>
-
+          
           <button  id = 'blocking' class = 'button' title = 'Block requests from this tab'>️✋</button>
           
           <input type = 'text' placeholder = 'Filter' id = 'filter-text'>

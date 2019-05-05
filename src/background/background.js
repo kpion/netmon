@@ -30,6 +30,7 @@ class Monitor{
 		this.entries = new Map();
 
 		//Map of Maps - by tabId we have then a map of entries by requestID (independent from the this.entries) 
+		//again, this is NOT a map to the above 'entries', it's completely independent.
 		this.tabEntries = new Map();
 
 		//Array of objects with *Ports* and criteria (like tabId), see onMessage.
@@ -186,7 +187,7 @@ class Monitor{
 			chrome.tabs.query({currentWindow: true, active: true},tab => {
 				if(!tab[0]){
 					console.error('tab[0] is undefined o.O')
-					return;//impossible
+					return;//impossible. Update: actually seems possible when the current window was... dev tools.
 				}
 				this.updateBrowserActionIcon(tab[0].id);
 				return;
@@ -268,9 +269,16 @@ class Monitor{
 					if(entry.request && entry.request.timeStamp){
 						if(entry.request.timeStamp < details.timeStamp){
 							//logger.log('removing: ',entry);
+
 							//only in the tabEntries because this is where we don't want the 'old' to show, we
 							//still want them in 'general view'.
 							theTabEntries.delete(key);
+							//bu we'l remember in *entries* the time user navigated away, so we will remove it in some
+							//point of time. readme: problem-old-entries
+							const theEntry = this.entries.get(key);
+							if(theEntry){
+								theEntry.extra.archivedOn = Date.now();
+							}
 						}else{
 							//logger.log('leaving alive: ',entry);
 						}
@@ -765,6 +773,30 @@ class Monitor{
 	}
 
 	/**
+	* problem: when user navigates away from a given site (but doesn't close a tab) we still keep
+	* the info in this.entries - because user might want to see them in 'global scope'.
+	* but by doing so, we risk that the data will become huge, in case user doesn't close the tab
+	* readme: problem-old-entries
+	* @param maxTime - in minutes
+	* @return - count of removed entries.
+	*/
+	clearArchivedEntries(maxTime = 60){
+		let count = 0;
+		this.entries.forEach((entry,requestId) => {
+			if(typeof entry.extra.archivedOn != 'undefined' && entry.extra.archivedOn !== null){
+				const entryArchivedAgeMinutes = (Date.now() -  entry.extra.archivedOn) / 1000 / 60;
+				if(entryArchivedAgeMinutes > maxTime){
+						this.entries.delete(requestId);
+				}
+				count++;
+			}
+		})	
+		this.addStat('Clearing archived tabs: removed entries', count);
+		//we use this.statsKeys... because this particular key is used more than once:
+		this.addStat(this.statsKeys.totalEntriesRemoved, count);	
+		return count;	
+	}
+	/**
 	 * This one should never actually be needed. And the name says its all.
 	 * @return bool true if anything was removed, false if there was no need.
 	 * @todo we should also remove them in tabEntries probably... 
@@ -804,7 +836,7 @@ class Monitor{
 		}
 
 		//when to consider a tab a candidate for a complete deletion. In in minutes since the last
-		//time it was alive. 60 minutes should be fine. This is the time user still has to still analyze
+		//time it was alive. 60 minutes should be fine. This is the time user still can still analyze
 		//the traffic even after closing a tab.
 		const maxInactivityTime = 60;
 		let clearedClosedTabs = this.clearClosedTabs(maxInactivityTime);
@@ -814,8 +846,15 @@ class Monitor{
 			this.log(`autoClear: done clearClosedTabs (${clearedClosedTabs.length}) tabs cleaned`);
 		}
 
+		//if there still is a problem, we'll remove the 'archived' entries. readme: problem-old-entries
+		if(this.entries.size > 3000){
+			let maxArchivedTime = 60;
+			let clearedArchivedEntriesCount = this.clearArchivedEntries(maxArchivedTime);
+			this.log(`autoClear: done clearArchivedEntries (${clearedArchivedEntriesCount}) entries removed`);
+
+		}		
 		//if for any reason the main tab-agnostic this.entries map also have a ridiculously large number of 
-		//items. This should actually happen.
+		//items. This should actually never happen.
 		const limitGlobal = 100000;
 		if(this.clearRidiculouslyHighNumberOfGlobalEntries(limitGlobal)){
 			//send notification to all the tabs:

@@ -75,6 +75,12 @@ class Entry{
 
             //did *we* (the extension) block this request. 
             blocked: false,
+
+            //for autocleaning purposes. This is a timestamp, when user navigated to another site in a tab
+            //so we know that sooner or later this entry should be removed (not immedietally, because for
+            //some time we want to keep it, so user can see it in 'global view'. Even if this entry isn't 
+            //visible anymore in 'tab scope') readme: problem-old-entries
+            archivedOn: null,
         };
 	}	
 }
