@@ -1,4 +1,5 @@
 /.local/
 /project.code-workspace
+/.favorites.json
 /.vscode
 /src/web-ext-artifacts
