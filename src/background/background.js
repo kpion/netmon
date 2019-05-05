@@ -324,6 +324,7 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
+		
 		const tabExtra = this.getTabExtra(details.tabId);
 
 		const entry = new Entry();
@@ -786,7 +787,7 @@ class Monitor{
 			if(typeof entry.extra.archivedOn != 'undefined' && entry.extra.archivedOn !== null){
 				const entryArchivedAgeMinutes = (Date.now() -  entry.extra.archivedOn) / 1000 / 60;
 				if(entryArchivedAgeMinutes > maxTime){
-						this.entries.delete(requestId);
+					this.entries.delete(requestId);
 				}
 				count++;
 			}

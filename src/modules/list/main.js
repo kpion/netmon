@@ -292,7 +292,7 @@ class List{
         this.port.postMessage({
             command:'queryEntries',
             criteria: criteria,
-            callbackData: {'action' : 'readEntries'},//we'll get this one when called back.
+            callbackData: {'action' : 'readEntries'},//we'll get this one when called back (in this.onMessage)
         });
     }
 
@@ -341,11 +341,20 @@ class List{
             simplePerformance.mark('received entries');
             this.entries.clear();
             this.entriesVisible.clear();
+
             //we need to convert an array to a map. This needs to be an array initially, because there are
             //some issues with chrome when sending a Map from background.js
+            //this [k,v] means take first value of subarray to 'k' and the other to 'v', and btw, 'k' is a 
+            //request id and v is the well, whole entry.
             message.result.forEach(([k,v])=>{
+                //if it's our own tab, i.e. our 'global view' tab - like 
+                //"chrome-extension://gkgkbnhnimkgahhagocmeimjbgjneidp/modules/list/index.html?mode=full"
+                //we ignore it. It's just easier to do it here than in background.js.
+                if(v.extra.tab && v.extra.tab.url && v.extra.tab.url.indexOf('chrome-extension://') === 0){
+                    return;
+                }
                 let entry = new Entry();
-                Object.assign(entry,v);//this actually could be moved to a Entry constructor.
+                Object.assign(entry,v);//this actually could be moved to an Entry constructor.
                 this.entries.set(k,entry);
             });
             

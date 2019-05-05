@@ -1,5 +1,6 @@
 /**
  * dialog window (or just a div) showing the entry details
+ * we avoid using .innerHTML here, both mozilla and google don't like it.
  */
 class EntryDetails{
     constructor(container){
