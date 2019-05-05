@@ -198,30 +198,33 @@ class List{
         
         //play/pause (state) button 
         l('#running').on('click',(ev)=>{
-            const lbutton = l(ev.target);
+            const lbutton = l(ev.currentTarget);
+            const lbuttonIcon = lbutton.find('.fa-icon');
             if(!lbutton.is('.pressed')){//in 'pause' mode, we enable playing
-                lbutton.text('⏸️️');
                 lbutton.addClass('pressed');
+                //lbutton.text('⏸️️');
+                lbuttonIcon.removeClass('fa-play').addClass('fa-pause');
                 //rereading the data which might have came in the meantime
                 this.clearData();
                 this.readEntries();                
             }else{//in 'playing' mode, we pause it.
-                lbutton.text('▶️');
+                //lbutton.text('▶️');
+                lbuttonIcon.removeClass('fa-pause').addClass('fa-play');
                 lbutton.removeClass('pressed');
             }
             
         });        
         //block (state) button 
         l('#blocking').on('click',(ev)=>{
-            const lbutton = l(ev.target);
+            const lbutton = l(ev.currentTarget);
             if(!lbutton.is('.pressed')){//in non blocking mode (default), we'll start blocking
-                lbutton.addClass('pressed');
+                lbutton.addClass('pressed').addClass('pressed-highlight');
                 this.port.postMessage({
                     command:'block',
                     criteria: criteria,
                 });                  
             }else{//in blocking mode, so we'll unblock it
-                lbutton.removeClass('pressed');
+                lbutton.removeClass('pressed').removeClass('pressed-highlight');
                 this.port.postMessage({
                     command:'unblock',
                     criteria: criteria,
@@ -325,7 +328,7 @@ class List{
         this.extraInfo = extras;
         //are we actually blocking something? Just to make the icon look right
         if(extras.tabExtra.blocking){
-            l('#blocking').addClass('pressed');
+            l('#blocking').addClass('pressed').addClass('pressed-highlight');
         }
         //to be continued.
         //logger.log(extras);
@@ -349,7 +352,8 @@ class List{
             message.result.forEach(([k,v])=>{
                 //if it's our own tab, i.e. our 'global view' tab - like 
                 //"chrome-extension://gkgkbnhnimkgahhagocmeimjbgjneidp/modules/list/index.html?mode=full"
-                //we ignore it. It's just easier to do it here than in background.js.
+                //we ignore it. It's just easier to do it here than in background.js. And, btw, FX doesn't
+                //send this requests at all.
                 if(v.extra.tab && v.extra.tab.url && v.extra.tab.url.indexOf('chrome-extension://') === 0){
                     return;
                 }
@@ -359,7 +363,7 @@ class List{
             });
             
             simplePerformance.mark('built entries');
-            //>500 entries will take a few ms, so we'll show our 'loader'
+            //>500 entries will take quite a few ms, so we'll show our 'loader'
             if(this.entries.size > 500){
                 this.updateLoader(true,`loading ${this.entries.size} entries...`);
             }

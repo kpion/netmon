@@ -2,7 +2,8 @@
     "name": "Netmon",
     "version": "1.0",
     "description": "Network monitoring tool",
-    
+    "homepage_url": "https://github.com/kpion/netmon",
+
     "permissions": [
         "storage",
         "activeTab",

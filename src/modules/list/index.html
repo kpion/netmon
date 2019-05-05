@@ -15,24 +15,28 @@
 
       <link rel="stylesheet" type="text/css" href="../../static/pure/pure-min.css">
       <link rel="stylesheet" type="text/css" href="style.css">
+      <link rel="stylesheet" type="text/css" href="../../static/font-awesome/css/all.css">
   </head>
   
   <body>
     <div id = 'toolbar' class = 'bar'>
         <div class = 'bar-left'>
-          <!-- <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>🗑</button> -->
-
-          <button  id = 'clearTab' class = 'button' >
-            <svg class = 'fa-icon' title = 'Clear this tab traffic'>
-              <use xlink:href="../../static/font-awesome/sprites/regular.svg#trash-alt"></use>
-            </svg> 
+          
+          <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>
+            <i class="fa-icon far fa-trash-alt"></i>
           </button>
 
-          <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>🗑</button>
+          <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>
+            <i class="fa-icon far fa-trash-alt"></i> 
+          </button>
 
-          <button  id = 'running' class = 'button pressed' title = 'Play / Pause'>⏸️️</button>
-          
-          <button  id = 'blocking' class = 'button' title = 'Block requests from this tab'>️✋</button>
+          <button  id = 'running' class = 'button pressed' title = 'Play / Pause (refreshing)'>
+            <i class="fa-icon fas fa-pause"></i>
+          </button>
+
+          <button  id = 'blocking' class = 'button' title = 'Block requests from this tab)'>
+              <i class="fa-icon far fa-hand-paper"></i> 
+          </button>  
           
           <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
 
@@ -42,9 +46,15 @@
         </div>
 
         <div class = 'bar-right'>
-          <button  id = 'popOut' class = 'button' title = 'To full window'>🗔</button>
-          <button  id = 'showGlobal' class = 'button' title = 'Global monitor'>🌍</button>
-          <!--
+          <button  id = 'popOut' class = 'button' title = 'To full window'>
+              <i class="fa-icon far fa-window-maximize"></i> 
+              
+          </button>
+
+          <button  id = 'showGlobal' class = 'button' title = 'Global monitor'>
+              <i class="fa-icon fas fa-globe-americas"></i> 
+          </button>
+                    <!--
           <span>🗑⏸️️️✋🗔🌍⏵/▶️⏸⏸️️️</span>
           -->
         </div>

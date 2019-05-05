@@ -208,14 +208,13 @@ toolbar
 }
 
 #toolbar .button{
-    /* position:relative;
-    top:2px; */
-
-    font-size:120%;
     border:none;
     background-color:inherit; 
     opacity:0.7;
-    min-width:26px;
+    /* min-width:26px; */
+    padding-left:3px;
+    padding-right:3px;
+    font-size:0.9em;
 }
 
 #toolbar .button:hover{
@@ -228,29 +227,23 @@ toolbar
     outline:none;
 }
 
+/* 'pressed' is only useful for js, not for styling, for styling there is .pressed-highlight */
 #toolbar .button.pressed{
-    /* border:1px solid #ccc; */
-    /* background-image: linear-gradient(transparent,rgba(0,0,0,.05) 40%,rgba(0,0,0,.1));  */
+
+}
+
+#toolbar .button.pressed-highlight{
     color:#0cf;
 }
 
-/* svg */
-.fa-icon{
-	width:0.8em;
-	height:0.8em;
-	vertical-align: top;/*this isn't strictly necesssary*/
-}
-/*
-those icons/unicode symbols need to be manually lowered.
-*/
-.button#clearTab, .button#clearAll, .button#popOut{
-    position:relative;
-    top:2px; 
+#toolbar .button#blocking.pressed-highlight{
+    color:#902C20;
 }
 
-#toolbar #tabinfo {
-    margin-left:3px;    
+.fa-icon{
+    
 }
+
 
 /*
 -------------------------------------------------------------------------------
