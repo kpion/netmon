@@ -1,0 +1,11 @@
+[
+    {
+        "type": "File",
+        "name": "/var/www/html/webexts/netmon/src/modules/list/index.html",
+        "parent_id": null,
+        "workspaceRoot": "/var/www/html/webexts/netmon",
+        "workspacePath": "src/modules/list/index.html",
+        "id": "rEoDRKLvPyBtf7pO",
+        "label": "index.html - the list view - both popup and global view"
+    }
+]
