@@ -549,7 +549,7 @@ class List{
             //is it wrapped in // ? Like '/blah.*/' - then user wants to treat it as a regex. 
             if(utils.hasRegexDelimeters(filters.text)){
                 //we'll use only what's inside the / and / - just like it is.
-                filters.textRegExp = new RegExp(filterText.substring(1, filters.text.length-1), "i");    
+                filters.textRegExp = new RegExp(filters.text.substring(1, filters.text.length-1), "i");    
             }else{//otherwise we'll escape things like ? or * to do literal matching.
                 filters.textRegExp = new RegExp(utils.escapeRegExp(filters.text), "i");
             }
