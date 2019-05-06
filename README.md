@@ -12,5 +12,11 @@ It also constantly displays current count of requests in any given tab.
 
 ## Installing
 
-Awaiting publication on AMO and Chrome Web Store. 
+### Firefox
+
+Available on AMO: https://addons.mozilla.org/en-GB/firefox/addon/netmon/
+
+### Chrome
+
+Awaiting publication.
 
