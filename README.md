@@ -12,5 +12,5 @@ It also constantly displays current count of requests in any given tab.
 
 ## Installing
 
-Awaiting publishing on AMO and Chrome Web Store. 
+Awaiting publication on AMO and Chrome Web Store. 
 
