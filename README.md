@@ -1,11 +1,15 @@
 # Network (requests) monitor
 
-Beta. 
+Network monitor - see requests and responses, including the HTTP headers, of the current page, or globally. 
 
-Network monitor, we can view the HTTP headers of the current page, or globally, from all tabs. We can see them at any point of time, also just *after* opening a page. We don't need to have the Developers tools always opened, only to take a look at the requests at random moments :)  
+You can use it at any time, also *after* the page has loaded.
+
+This is useful when there are random errors in some cases and you just want to see what happened, list the past requests. 
+
+It also constantly displays current count of requests in any given tab.
 
 
 ## Installing
 
-to be continued.
+Awaiting publishing on AMO and Chrome Web Store. 
 
