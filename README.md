@@ -8,6 +8,7 @@ This is useful when there are random errors in some cases and we just want to se
 
 It also constantly displays current count of requests in any given tab.
 
+![It looks like this](https://raw.githubusercontent.com/kpion/netmon/master/stuff/netmon-screenshot-chrome-oryg-resolution.png)
 
 ## Installing
 
