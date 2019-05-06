@@ -1,6 +1,14 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+:root{
+    /* modal dialog */
+    --dlg-width:500px; 
+
+    --toolbar-height:36px;
+    --statusbar-height:26px;
+}
+
 html{
     height:100%;
 }
@@ -14,10 +22,11 @@ body{
     height:100%;
 }
 
-:root{
-    --dlg-width:500px;/* modal dialog */
-    --toolbar-height:36px;
-    --statusbar-height:26px;
+main {
+    position:relative;
+    /* height of header element */
+    top: calc(1em + 2px);
+    height:calc(100% - 1em - 2px);
 }
 
 
@@ -33,12 +42,27 @@ body{
 /* this means we are probably in full mode */
 @media (min-width: 801px) {
     html{
-        /* max for both fx and chrome */
         width:100%;
+    }
+    :root{
+        --dlg-width:600px
     }
 }
 
+header{
+    display: flex;
+    position:fixed;
+    justify-content: center;
 
+    margin: 0;
+    padding: 1px 0;
+    width: 100%;
+
+    background-color: #444;
+    color:#ccc;
+    font-size: smaller;
+    
+}
 /* most if these things exist to have fixed header position */
 
 #entries-table{
@@ -240,8 +264,9 @@ toolbar
     color:#902C20;
 }
 
-.fa-icon{
-    
+
+#toolbar .button a .fa-icon{
+    color:#333;
 }
 
 
@@ -258,6 +283,9 @@ status bar
     border-left:none;
 }
 
+#statusbar #entries-removed-warning{
+    color:#902C20;
+}
 /*
 -------------------------------------------------------------------------------
 modal dialog
@@ -265,19 +293,18 @@ modal dialog
 */
 .modal{
     position:absolute;
-    top: 50px;
+    top: 10px;
     width: var(--dlg-width);
     /* height: 200px; */
     left: calc(50% - var(--dlg-width)/2);
-    padding: 10px;
+    padding: 5px;
     /* font-size:1.1em; */
     border: 1px solid #555;
     border-radius: 5px; 
-    background-color:white; 
+    background-color:#fafafa; 
     
     color:#444;
     display:none;
-    
 }
   
 .modal.modal-visible{
@@ -288,20 +315,21 @@ modal dialog
     margin-bottom:5px;
 }
 
+/*the 'x' on the top right */
 .modal .modal-btn-close{
     position: absolute;
-    right: 5px;
-    top: 5px;
+    right: 7px; 
+    top: 1px;
     padding-top: 3px;
     /* background: #fff; */
-    font-size: 16px;
-    width: 25px;
+    /* width: 25px; */
     height: 25px;
     font-weight: bold;
     text-align: center;
     cursor: pointer;
     /* color: #aaa; */
     opacity:0.7;
+    
 }
 
 .modal .modal-btn-close:hover { 
@@ -344,10 +372,11 @@ modal dialog
 /* the entire detail's container (which might be then a child of a dialog */
 .entry-details{
     margin-top:1.5em;
-    max-height:200px;
-    padding-right:5px;
+    /* max-height:200px; */
+    max-height:70vh;
     overflow:auto;
     word-wrap:break-word;
+    font-size:0.95em;
     
 }
 .entry-details .row {

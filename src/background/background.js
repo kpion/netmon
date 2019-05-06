@@ -214,11 +214,22 @@ class Monitor{
 				badgeText = '';
 			}else{
 				//'normal' situation
+				//used to add a '>' char in case there were some entries autoremoved, but it doesn't fit
+				//the space.
 				badgeText = theTabEntries.size;
 				if(theTabEntries.size > 0){
 					const lastEntry = Array.from(theTabEntries)[theTabEntries.size - 1][1];
 					const tabInfo = app.isDev()?` [from tab ${tabId}]`:'';
-					titleText += ` - ${theTabEntries.size} requests${tabInfo}. Most recent one: ` + utils.ellipsis(lastEntry.request.url,200); 
+					if(tabExtra.autoRemovedEntriesCount > 0){
+						titleText += ': >';	
+					}else{
+						titleText += ': ';	
+					}
+					titleText += `${theTabEntries.size} requests${tabInfo}`;
+					if(tabExtra.autoRemovedEntriesCount > 0){
+						titleText += `\nNote: ${tabExtra.autoRemovedEntriesCount} oldest were removed from the list`;
+					}
+					titleText += `\nMost recent one: ` + utils.ellipsis(lastEntry.request.url,150);
 				}
 			}
 		}

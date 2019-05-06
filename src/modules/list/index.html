@@ -19,76 +19,85 @@
   </head>
   
   <body>
-    <div id = 'toolbar' class = 'bar'>
-        <div class = 'bar-left'>
+    <header>
+      <!-- later changed with js to add version-->
+      <span id = 'header-app-info'>Netmon</span>
+    </header>
+    <main>
+      <div id = 'toolbar' class = 'bar'>
+          <div class = 'bar-left'>
+            
+            <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>
+              <i class="fa-icon far fa-trash-alt"></i>
+            </button>
+
+            <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>
+              <i class="fa-icon far fa-trash-alt"></i> 
+            </button>
+
+            <button  id = 'running' class = 'button pressed' title = 'Play / Pause (refreshing)'>
+              <i class="fa-icon fas fa-pause"></i>
+            </button>
+
+            <button  id = 'blocking' class = 'button' title = 'Block requests from this tab)'>
+                <i class="fa-icon far fa-hand-paper"></i> 
+            </button>  
+            
+            <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
+
+            <label title = 'Show all the requests for this tab, including previous navigations' id ='filter-show-archived-wrapper'>
+              <input type = 'checkbox' id = 'filter-show-archived'> archived
+            </label>
+          </div>
+
+          <div class = 'bar-right'>
+            <button  id = 'popOut' class = 'button' title = 'To full window'>
+                <i class="fa-icon far fa-window-maximize"></i> 
+                
+            </button>
+
+            <button  id = 'showGlobal' class = 'button' title = 'Global monitor'>
+                <i class="fa-icon fas fa-globe-americas"></i> 
+            </button>
+
+            <button  id = 'about' class = 'button' title = 'About & source code'>
+                <a target = '_blank' href = 'https://github.com/kpion/netmon'>
+                  <i class="fa-icon far fa-question-circle"></i>
+                </a>
+            </button>
+
+          </div>
           
-          <button  id = 'clearTab' class = 'button' title = 'Clear this tab traffic'>
-            <i class="fa-icon far fa-trash-alt"></i>
-          </button>
-
-          <button  id = 'clearAll' class = 'button' title = 'Clear everything (all tabs)'>
-            <i class="fa-icon far fa-trash-alt"></i> 
-          </button>
-
-          <button  id = 'running' class = 'button pressed' title = 'Play / Pause (refreshing)'>
-            <i class="fa-icon fas fa-pause"></i>
-          </button>
-
-          <button  id = 'blocking' class = 'button' title = 'Block requests from this tab)'>
-              <i class="fa-icon far fa-hand-paper"></i> 
-          </button>  
-          
-          <input type = 'text' placeholder = 'Filter' id = 'filter-text'>
-
-          <label title = 'Show all the requests for this tab, including previous navigations'>
-            <input type = 'checkbox' id = 'filter-show-archived'> archived
-          </label>
-        </div>
-
-        <div class = 'bar-right'>
-          <button  id = 'popOut' class = 'button' title = 'To full window'>
-              <i class="fa-icon far fa-window-maximize"></i> 
-              
-          </button>
-
-          <button  id = 'showGlobal' class = 'button' title = 'Global monitor'>
-              <i class="fa-icon fas fa-globe-americas"></i> 
-          </button>
-                    <!--
-          <span>🗑⏸️️️✋🗔🌍⏵/▶️⏸⏸️️️</span>
-          -->
-        </div>
-        
-    </div>
-
-    <!-- usually hidden, unless there is a lot of job to do (loading entries)-->
-    <div id = 'loader'></div>
-
-    <table id = 'entries-table' class="entries-table" >
-      <thead></thead>
-      <tbody></tbody>
-    </table> 
-    
-    <div id = 'statusbar' class = 'bar'>
-        <div class = 'bar-left'>
-          <span id = 'stats'></span>
-        </div>
-        <div class = 'bar-right'>
-          <!-- currently monitored tab info (or global) -->
-          <span id = 'tabinfo'></span>      
-        </div>
-    </div>
-
-
-    <div class = 'modal' id = 'modal-entry-details'>
-      <label class = 'modal-btn-close'>✕</label>
-      <div class = 'content entry-details'>
-          <h2>loading....</h2>
       </div>
-      
-      <br>
-      <button class = 'modal-btn-ok'>OK</button>
-    </div>
 
+      <!-- usually hidden, unless there is a lot of job to do (loading entries)-->
+      <div id = 'loader'></div>
+
+      <table id = 'entries-table' class="entries-table" >
+        <thead></thead>
+        <tbody></tbody>
+      </table> 
+      
+      <div id = 'statusbar' class = 'bar'>
+          <div class = 'bar-left'>
+            <span id = 'stats'></span>
+            <!-- info about auto removed entries -->
+            <span id = 'entries-removed-warning'></span>
+          </div>
+          <div class = 'bar-right'>
+            <!-- currently monitored tab info (or global) -->
+            <span id = 'tabinfo'></span>      
+          </div>
+      </div>
+
+
+      <div class = 'modal' id = 'modal-entry-details'>
+        <label class = 'modal-btn-close'>✕</label>
+        <div class = 'content entry-details'>
+            <h2>loading....</h2>
+        </div>
+        <!-- <button class = 'modal-btn-ok'>Close</button> -->
+      </div>
+    </main>
   </body>
 </html>

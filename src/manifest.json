@@ -1,7 +1,7 @@
 {
     "name": "Netmon",
     "version": "1.0",
-    "description": "Network monitoring tool",
+    "description": "Network monitor, view the HTTP headers of the current page, or globally, from all tabs.",
     "homepage_url": "https://github.com/kpion/netmon",
 
     "permissions": [

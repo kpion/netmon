@@ -42,6 +42,7 @@ class List{
     }
 
     initAndRun(){
+        this.extensionManifest = chrome.runtime.getManifest();
 
         /**
          * mode: taken from the url (?mode=xyz), 'popup' means we're started from browser action icon, 
@@ -55,6 +56,8 @@ class List{
             console.error('mode is not defined');
             this.mode = 'popup';//default one.
         }
+
+        l('#header-app-info').text(`${this.extensionManifest.name} v. ${this.extensionManifest.version}`);
 
         //which tab should we filter here?
 
@@ -143,9 +146,11 @@ class List{
         //buttons for clearing, closing, opening new netmon tools.
         
         //global monitor vs specific tab monitor
-        if(this.queryTab === 'all'){
+        if(this.queryTab === 'all'){//global
             l('#showGlobal').css('display','none');    
             l('#clearTab').css('display','none'); 
+            l('#blocking').css('display','none'); 
+            l('#filter-show-archived-wrapper').css('display','none'); 
         }else{//specific tab
             l('#clearAll').css('display','none'); 
         }
@@ -154,6 +159,7 @@ class List{
         if(this.mode === 'full'){
             l('#popOut').css('display','none');  
         }
+
         if(this.mode === 'popup'){
             l('#clearAll').css('display','none');  
         }
@@ -179,11 +185,6 @@ class List{
         });
 
       
-
-        //close button:    
-        l('.modal .modal-btn-close, .modal .modal-btn-ok').on('click',(ev)=>{
-            l(ev.target).closest('.modal').removeClass('modal-visible');
-        })
 
         //filtering
         l('#filter-text').on('input',(ev) => {
@@ -272,6 +273,20 @@ class List{
             }
         })
 
+        //close button in *any* modal dialog:    
+        l('.modal .modal-btn-close, .modal .modal-btn-ok').on('click',(ev)=>{
+            l(ev.target).closest('.modal').removeClass('modal-visible');
+        })
+
+        //escape key - closing our (only right now) modal dialog
+        l(document).on('keydown',(ev)=>{
+            //l(ev.target).closest('.modal').removeClass('modal-visible');
+            if(ev.keyCode === 27){
+                l('#modal-entry-details').removeClass('modal-visible');
+            }
+            
+        })        
+
     }
 
     /**
@@ -330,8 +345,9 @@ class List{
         if(extras.tabExtra.blocking){
             l('#blocking').addClass('pressed').addClass('pressed-highlight');
         }
-        //to be continued.
-        //logger.log(extras);
+        if(extras.tabExtra.autoRemovedEntriesCount > 0){
+            l('#entries-removed-warning').text(` Note: ${extras.tabExtra.autoRemovedEntriesCount} oldest records removed.`).attr('title','To avoid performance issues');
+        }
     }
 
     //message (callback) from our port (probably from background js in response to our 'command')
@@ -407,8 +423,11 @@ class List{
             //In contrast to the other on..., here in 'details' a whole entry is sent. 
             //With request, empty reponse, some extras 
             //this actually could be moved to a Entry constructor.
-            
             Object.assign(entry,JSON.parse(JSON.stringify(details)));
+
+            if(entry.extra.tab && entry.extra.tab.url && entry.extra.tab.url.indexOf('chrome-extension://') === 0){
+                return;
+            }                        
             this.entries.set(details.request.requestId, entry);
             
             if(this.isPlaying() && this.matches(entry, this.getFilters())){
@@ -431,18 +450,22 @@ class List{
                     this.updateStatus();
                 }
             }else{
-                logger.log('warning, no entry in list view for ' + details.request.requestId);
+                //this is actually possible if for some reason we did not add a request, for example 
+                //because it came from ourselves (chrome-extension)
+                //logger.log('warning, no entry in list view for ' + details.request.requestId);
             }
         }else if (
             eventName === 'entriesClearedNotification' || 
             eventName === 'entriesAutoClearedNotification'
            ){
             //logger.log('cleared!: ', eventName);
-            //user somewhere did a *manual* cleaning, we don't care here if it's us or not, we'll just reread.
+            //either autocleariing or user somewhere did a *manual* cleaning, we don't care here if it's us or not, 
+            //we'll just reread.
             if(this.isPlaying()){
                 this.clearData();
                 this.readEntries();
             }
+            
         }                
     }
 

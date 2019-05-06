@@ -1,6 +1,8 @@
 /**
  * dialog window (or just a div) showing the entry details
- * we avoid using .innerHTML here, both mozilla and google don't like it.
+ * We avoid using .innerHTML here, both mozilla and google don't like it.
+ * It's is *not* modal dialog, hence no 'close' method etc. Here we're only responsible for the
+ * details view and it can be used in other places as well.
  */
 class EntryDetails{
     constructor(container){
