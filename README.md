@@ -18,5 +18,5 @@ Available on AMO: https://addons.mozilla.org/en-GB/firefox/addon/netmon/
 
 ### Chrome
 
-Awaiting publication.
+Available in Web Store: https://chrome.google.com/webstore/detail/netmon/fnbdjaofejpjedhleannakpdpifmchlo
 
