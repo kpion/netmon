@@ -4,6 +4,12 @@
     "description": "Network monitor - view the HTTP headers of the current page, or globally, from all tabs.",
     "homepage_url": "https://github.com/kpion/netmon",
 
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "{c4ab9d68-2338-4dd9-b144-718501853934}"
+        }
+    },
+
     "permissions": [
         "storage",
         "activeTab",
@@ -12,13 +18,13 @@
         "webRequest",
         "webRequestBlocking",
         "http://*/",
-        "https://*/"        
+        "https://*/"
     ],
-    
+
     "background": {
         "page": "background/index.html"
     },
-    
+
     "browser_action": {
         "default_popup": "modules/list/index.html?mode=popup",
         "default_icon": {
@@ -26,14 +32,14 @@
             "32": "static/images/extension-icon.png",
             "48": "static/images/extension-icon.png",
             "128": "static/images/extension-icon.png"
-          }        
-    },   
-   
+        }
+    },
+
     "icons": {
         "16": "static/images/extension-icon.png",
         "32": "static/images/extension-icon.png",
         "48": "static/images/extension-icon.png",
         "128": "static/images/extension-icon.png"
-    },       
+    },
     "manifest_version": 2
-  }
+}
