@@ -3,3 +3,4 @@
 /.favorites.json
 /.vscode
 /src/web-ext-artifacts
+/*.xpi
