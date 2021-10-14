@@ -18,7 +18,7 @@ class List{
         this.port = null;
         this.mode = null;
 
-        //Map of all Entry objects by requestId, for this tab. 
+        //Map of all Entry objects by unique key, for this tab.
         //**Referenced** in e.g. table.js
         this.entries = new Map();
 
@@ -262,8 +262,8 @@ class List{
             const lTarget = l(ev.target);
             //details popup
             if(lTarget.is('#entries-table tbody tr *')){
-                const reqestId = lTarget.closest('tr').attr('data-requestid');
-                const entry = this.entries.get(reqestId);
+                const requestKey = lTarget.closest('tr').attr('data-requestkey');
+                const entry = this.entries.get(requestKey);
                 if(!entry){
                     return;
                 }
@@ -428,19 +428,19 @@ class List{
             if(entry.extra.tab && entry.extra.tab.url && entry.extra.tab.url.indexOf('chrome-extension://') === 0){
                 return;
             }                        
-            this.entries.set(details.request.requestId, entry);
+            this.entries.set(getKey(details.request), entry);
             
             if(this.isPlaying() && this.matches(entry, this.getFilters())){
                 this.table.addRow(entry);
             }
         }else if (eventName === 'onSendHeaders'){
-            const entry = this.entries.get(details.request.requestId);
+            const entry = this.entries.get(getKey(details.request));
             if(entry){
                 //entry['request']['headers'] = details.requestHeaders;	            
                 Object.assign(entry,JSON.parse(JSON.stringify(details)));
             }
         }else if (eventName === 'onCompleted' || eventName === 'onErrorOccurred'){
-            const entry = this.entries.get(details.response.requestId);
+            const entry = this.entries.get(getKey(details.response));
             if(entry){
                 //entry.response = details;
                 Object.assign(entry,JSON.parse(JSON.stringify(details)));
@@ -596,10 +596,10 @@ class List{
         const resultEntries = new Map();
 
         var t0 = performance.now();
-        entries.forEach((entry, requestId) => {
+        entries.forEach((entry, key) => {
  
             if(this.matches(entry, filters)){
-                resultEntries.set(requestId, entry);
+                resultEntries.set(key, entry);
             }
         });
         var t1 = performance.now();

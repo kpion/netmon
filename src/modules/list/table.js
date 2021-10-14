@@ -92,7 +92,7 @@ class Table{
 
     makeRow(entry){
         const tr = document.createElement('tr');
-        tr.setAttribute('data-requestId',entry.request.requestId);
+        tr.setAttribute('data-requestKey',getKey(entry.request));
         const _td = document.createElement('td');   
         const _span = document.createElement('span');
         const url = new URL(entry.request.url);
@@ -252,16 +252,15 @@ class Table{
         }        
     }
 
-    findRow (requestId){
-        return document.querySelector('tr[data-requestid="'+requestId+'"]',this.tableEl);
+    findRow (entry){
+        return document.querySelector('tr[data-requestkey="'+getKey(entry.request)+'"]',this.tableEl);
     }
 
     /**
-     * updates info in a row, by requestId
+     * updates info in a row, by entry
      */ 
     updateRow(entry){
-        const requestId = entry.request.requestId;
-        const trEl = this.findRow(requestId);
+        const trEl = this.findRow(entry);
         if(!trEl){
             return null;
         }

@@ -26,10 +26,10 @@ class Monitor{
 
 	//might be called multiple times (e.g. to reset):
 	init(){
-		//Map. all Entry objects by requestId, absolutely all entries, no dividing into tabs, with main key being
+		//Map. all Entry objects by unique key, absolutely all entries, no dividing into tabs, with main key being
 		this.entries = new Map();
 
-		//Map of Maps - by tabId we have then a map of entries by requestID (independent from the this.entries) 
+		//Map of Maps - by tabId we have then a map of entries by unique key (independent from the this.entries)
 		//again, this is NOT a map to the above 'entries', it's completely independent.
 		this.tabEntries = new Map();
 
@@ -109,6 +109,11 @@ class Monitor{
 			filter,["responseHeaders"]
 		);
 		*/
+
+		//Listen for responses to requests that get HTTP-redirected
+		chrome.webRequest.onBeforeRedirect.addListener(
+			(details) => {this.onCompleted(details)},
+			filter,["responseHeaders"]);
 
 		//end of everything I guess... i.e. onCompleted and onErrorOccurred below.
 		//btw, the responseHeaders flag tells the browser to send responseHeaders which here (in onCompleted)
@@ -343,7 +348,7 @@ class Monitor{
 		if(tabExtra.blocking){
 			entry.extra.blocked = true;
 		}
-		this.entries.set(details.requestId,entry);
+		this.entries.set(getKey(details),entry);
 		
 		//and... *independly*, tabEntries.
 		//first of all - do we have a `tab` collection there?
@@ -353,7 +358,7 @@ class Monitor{
 		
 		this.tabEntries.
 			get(details.tabId).
-			set(details.requestId, entry /*this.entries.get(details.requestId)*/); 
+			set(getKey(details), entry);
 
 		
 		//Grabbing tab information.
@@ -392,7 +397,7 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
-		const entry = this.entries.get(details.requestId);
+		const entry = this.entries.get(getKey(details));
 		//might be that user did 'clear' while this request was still going on.
 		if(!entry){
 			logger.log('no entry for ' + details.requestId + ':',details);
@@ -412,7 +417,7 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
-		const entry = this.entries.get(details.requestId);
+		const entry = this.entries.get(getKey(details));
 
 		//no such thing yet (or already) not sure why but this ... happens
 		//maybe it's a matter of deleting entries (clear) while there are still on going ones.
@@ -439,7 +444,7 @@ class Monitor{
 		if(details.tabId <= 0){
 			return;
 		}
-		const entry = this.entries.get(details.requestId);
+		const entry = this.entries.get(getKey(details));
 		//no such thing yet (or already), not sure why but this ... happens
 		if(!entry){
 			logger.log('no entry for ' + details.requestId + ':',details);
@@ -454,11 +459,11 @@ class Monitor{
 	/**
 	 * returns entries by search critieria
 	 * @param {object} criteria
-	 * 	if null, *all* entries are returned keyed by 'request_id'.
+	 * 	if null, *all* entries are returned keyed by getKey()
 	 *  otherwise: 
 	 *  criteria { 
 	 *    	tabId : if not null, only the entries for given tabId are returned as a Map(!)
-	 *    	requestId : if not null, only the entries for given requestId are return 
+	 *    	requestKey : if not null, only the entry for given unique key are return
 	 * 			(no problem there is both above are defined)
 	 * 		useGlobal: if true, the global this.entries will be used. Along with tabId this 
 	 * 			will also give 'archived' entries for given tab
@@ -492,10 +497,10 @@ class Monitor{
 			}
 		};
 		
-		//even if both (requestId and tabId) are defined, that is fine, because given requestId
+		//even if both (requestKey and tabId) are defined, that is fine, because given requestId
 		//series can belong to only one tab anyway. 
-		if(typeof criteria.requestId !== 'undefined'){
-			srcEntries = this.entries.get(criteria.requestId);
+		if(typeof criteria.requestKey !== 'undefined'){
+			srcEntries = this.entries.get(criteria.requestKey);
 		};
 
 		if(typeof srcEntries === 'undefined'){
@@ -510,7 +515,7 @@ class Monitor{
 		this.entries.forEach((entry,requestId) => {
 			//we use == not === because actually tabId isn't guaranteed to be int.
 			if(entry.request && entry.request.tabId == tabId){
-				resultMap.set(requestId,entry);
+				resultMap.set(getKey(entry),entry);
 			}
 		})
 		return resultMap;
@@ -687,9 +692,9 @@ class Monitor{
 		//harder - we need to find all the matching entries in this.entries.
 		//previously we used to take that info (what to delete) from tabEntries but that wasn't sufficient
 		//because for many reasons this information might not be up to date.
-		this.entries.forEach((entry,requestId) => {
+		this.entries.forEach((entry,key) => {
 			if(entry.request && entry.request.tabId === tabId){
-				this.entries.delete(requestId);
+				this.entries.delete(key);
 				count++;
 			}
 		})		
@@ -723,14 +728,14 @@ class Monitor{
 		let clearedTabs = [];
 		this.tabEntries.forEach((theTabEntries, tabId) => {
 			if(theTabEntries.size > maxEntriesPerTab){
-				const requestsIds = theTabEntries.keys();
+				const keys = theTabEntries.keys();
 				let index = 0;
 				//so if the max is 10 and we have 15, then well remove 5 plus removeCountBelowMax
 				let removeCount = (theTabEntries.size - maxEntriesPerTab) + removeCountBelowMax;
 				//logger.log('clearing ' + removeCount + ' in ' + tabId);
-				for (let requestId of requestsIds) {
-					theTabEntries.delete(requestId);
-					this.entries.delete(requestId);
+				for (let requestKey of keys) {
+					theTabEntries.delete(requestKey);
+					this.entries.delete(requestKey);
 					if(++index >= removeCount){
 						break;
 					}
@@ -794,11 +799,11 @@ class Monitor{
 	*/
 	clearArchivedEntries(maxTime = 60){
 		let count = 0;
-		this.entries.forEach((entry,requestId) => {
+		this.entries.forEach((entry,key) => {
 			if(typeof entry.extra.archivedOn != 'undefined' && entry.extra.archivedOn !== null){
 				const entryArchivedAgeMinutes = (Date.now() -  entry.extra.archivedOn) / 1000 / 60;
 				if(entryArchivedAgeMinutes > maxTime){
-					this.entries.delete(requestId);
+					this.entries.delete(key);
 				}
 				count++;
 			}
