@@ -159,6 +159,13 @@ Client error item, like 'blocked by client', applies to the whole tr element.
     color: #E74010;
 }
 
+/*
+Redirect, like 307. Applies to the whole tr
+*/
+#entries-table tr.item-http-redirect {
+    color: #1010E7;
+}
+
 
 /** specific columns **/
 

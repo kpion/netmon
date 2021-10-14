@@ -112,7 +112,7 @@ class Monitor{
 
 		//Listen for responses to requests that get HTTP-redirected
 		chrome.webRequest.onBeforeRedirect.addListener(
-			(details) => {this.onCompleted(details)},
+			(details) => {this.onCompleted(details, true)},
 			filter,["responseHeaders"]);
 
 		//end of everything I guess... i.e. onCompleted and onErrorOccurred below.
@@ -412,7 +412,7 @@ class Monitor{
 		this.onWebRequest('onHeadersReceived',details);	
 	}*/
 
-	onCompleted(details){
+	onCompleted(details, isRedirect=false){
 		//this isn't an ordinary tab, probably it's ourselves (-1) and so we don't want to pollute the lists.
 		if(details.tabId <= 0){
 			return;
@@ -433,6 +433,7 @@ class Monitor{
 
 		//setting:
 		entry.response = details;
+		if (isRedirect) entry.response.isRedirect = true;
 		entry.extra.time = entry.response.timeStamp - entry.request.timeStamp;
 
 		//this.onWebRequest('onCompleted',details);

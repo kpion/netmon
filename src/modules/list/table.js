@@ -187,11 +187,14 @@ class Table{
                 //when there is response.error (handled further below)
                 if(entry.response.statusCode){
                     const statusCodeInt = parseInt(entry.response.statusCode);  
-                    if(statusCodeInt >= 200 && statusCodeInt <= 299){
-                        //OK
-                    }else if(statusCodeInt >= 300 && statusCodeInt <= 399){    
+                    if(entry.response.isRedirect){
                         //Redirection
-                    }else{
+                        //Check this condition first because redirect with response status 200 can happen if
+                        //another extension redirect the request.
+                        trClass.push('item-http-redirect');
+                    }else if(statusCodeInt >= 200 && statusCodeInt <= 299){
+                        //OK
+                    }else if (statusCodeInt >= 400){
                         //Error
                         trClass.push('item-server-error');
                     }   
