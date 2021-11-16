@@ -85,3 +85,10 @@ class Entry{
         };
 	}	
 }
+
+/**
+ * Get unique key for a request
+ */
+function getKey(details) {
+  return details.requestId + '_-_' + details.url;
+}

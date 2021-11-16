@@ -92,7 +92,7 @@ class Table{
 
     makeRow(entry){
         const tr = document.createElement('tr');
-        tr.setAttribute('data-requestId',entry.request.requestId);
+        tr.setAttribute('data-requestKey',getKey(entry.request));
         const _td = document.createElement('td');   
         const _span = document.createElement('span');
         const url = new URL(entry.request.url);
@@ -187,11 +187,14 @@ class Table{
                 //when there is response.error (handled further below)
                 if(entry.response.statusCode){
                     const statusCodeInt = parseInt(entry.response.statusCode);  
-                    if(statusCodeInt >= 200 && statusCodeInt <= 299){
-                        //OK
-                    }else if(statusCodeInt >= 300 && statusCodeInt <= 399){    
+                    if(entry.response.isRedirect){
                         //Redirection
-                    }else{
+                        //Check this condition first because redirect with response status 200 can happen if
+                        //another extension redirect the request.
+                        trClass.push('item-http-redirect');
+                    }else if(statusCodeInt >= 200 && statusCodeInt <= 299){
+                        //OK
+                    }else if (statusCodeInt >= 400){
                         //Error
                         trClass.push('item-server-error');
                     }   
@@ -252,16 +255,15 @@ class Table{
         }        
     }
 
-    findRow (requestId){
-        return document.querySelector('tr[data-requestid="'+requestId+'"]',this.tableEl);
+    findRow (entry){
+        return document.querySelector('tr[data-requestkey="'+getKey(entry.request)+'"]',this.tableEl);
     }
 
     /**
-     * updates info in a row, by requestId
+     * updates info in a row, by entry
      */ 
     updateRow(entry){
-        const requestId = entry.request.requestId;
-        const trEl = this.findRow(requestId);
+        const trEl = this.findRow(entry);
         if(!trEl){
             return null;
         }
